@@ -1,84 +1,86 @@
 # Neuromorphic Studio
 
-Neuromorphic Studio is an early-stage research and engineering workbench for exploring spiking neural networks (SNNs), event-based sensing, neuron dynamics, synaptic plasticity and edge deployment trade-offs.
+Neuromorphic Studio is an early-stage research workbench for spiking neural networks, event-based sensing, neuron dynamics, synaptic plasticity, reproducible evaluation and deployment scaffolds.
 
-> **Project status: research prototype.** The interface contains experimental simulators, illustrative presets and hardware-oriented planning tools. It is not yet a validated scientific instrument, a hardware compiler, a certified device interface, or a production SaaS product. Treat every output as exploratory until independently validated against reference implementations and physical measurements.
+> **Status: research prototype.** The code now includes deterministic neuron models, STDP, heterogeneous network primitives, dataset adapters, benchmark statistics, reference checks and constrained exporter templates. This is not yet a scientifically validated instrument or a production neuromorphic hardware compiler.
 
-## What is in the repository
+## Implemented research core
 
-The current React + TypeScript + Vite application is organized around these work areas:
+- LIF, AdEx and Izhikevich single-neuron models with Euler and RK4 integration.
+- Pair-based exponential STDP and a trace-based triplet STDP rule.
+- Fixed-step LIF network and heterogeneous LIF/AdEx/Izhikevich populations, deterministic topology builders, delayed synaptic events and spike-raster summaries.
+- Strict event CSV parser and Tonic adapters for N-MNIST, IBM DVS Gesture and SHD.
+- Confusion matrix, accuracy, macro-F1, class-stratified bootstrap intervals and paired exact McNemar comparisons.
+- Brian2 reference fixture generation and automated comparisons for all three neuron equations.
+- Lava simulation scaffold, snnTorch/PyTorch module scaffold and portable fixed-point C99 kernel. These are software exports, not certified board firmware.
 
-- **DVS encoder** — event-stream representation experiments.
-- **Neuron sandbox** — LIF, AdEx and Izhikevich model exploration.
-- **SNN network** — network topology and activity visualization.
-- **STDP lab** — spike-timing-dependent plasticity experiments.
-- **Hardware profiler** — preliminary hardware/energy trade-off exploration.
-- **Benchmark evaluator** — dataset and model evaluation workflows.
-- **ROI calculator** — exploratory deployment economics.
-- **Robotics control** — control-loop demonstrations.
-- **AI architect** — optional Gemini-assisted design support when configured.
-
-The exact scientific scope and validation status of each work area is tracked in [docs/SCIENTIFIC_VALIDATION.md](docs/SCIENTIFIC_VALIDATION.md).
+See [Scientific engine](docs/SCIENTIFIC_ENGINE.md), [Reproducible experiments](docs/REPRODUCIBLE_EXPERIMENTS.md) and [Scientific validation](docs/SCIENTIFIC_VALIDATION.md).
 
 ## Run locally
 
-Requirements: Node.js 22 or newer and npm.
+Requirements: Node.js 22+, npm and PostgreSQL.
 
-```bash
+~~~bash
 npm install
 cp .env.example .env
-# Add GEMINI_API_KEY only if you want to use the optional AI architect.
+# Set DATABASE_URL to a PostgreSQL database before signing in.
+# Set GEMINI_API_KEY only if the optional AI assistant is needed.
 npm run dev
-```
+~~~
 
-The development server starts on port 3000. The API health check is available at `/api/health`.
+The app starts on port 3000. Health: /api/health. Without DATABASE_URL, account and project APIs fail closed and the workspace cannot be used.
 
 ## Quality checks
 
-```bash
+~~~bash
+npm test
 npm run typecheck
 npm run build
-npm start
-```
+~~~
 
-GitHub Actions runs type-checking and a production build on pushes and pull requests. These checks establish build integrity, not scientific correctness.
+GitHub Actions also runs:
+- Brian2 2.9.0 reference comparisons using NumPy below 2.
+- Lava 0.10.0 simulation, snnTorch 1.0.0 CPU execution and GCC C99 compilation.
+- Tonic 1.6.0 dataset adapter import checks.
+- CodeQL static analysis.
+
+A green build or simulator test is not proof of independent scientific reproduction or physical board compatibility.
 
 ## Configuration
 
-| Variable | Required | Purpose |
-|---|---:|---|
-| `GEMINI_API_KEY` | No | Enables the optional server-side AI architecture assistant. Keep it server-side; never expose it through a `VITE_*` variable. |
-| `PORT` | No | HTTP port. Defaults to 3000. |
+| Variable | Purpose |
+|---|---|
+| DATABASE_URL | PostgreSQL connection for users, sessions, private projects and experiment records. Required for application use. |
+| PGSSLMODE | Set to require when the PostgreSQL provider requires TLS. |
+| GEMINI_API_KEY | Optional server-side AI integration. Never use a VITE_ prefix. |
+| PORT | HTTP port, default 3000. |
 
-See [.env.example](.env.example). Do not commit secrets.
+## Security and product boundaries
 
-## Important product and security boundaries
+- Registration/login uses scrypt password hashes and HttpOnly SameSite session cookies. Project and experiment queries are scoped to the authenticated user.
+- AI requests require a valid session and use database-backed quotas (8/minute, 60/day), prompt/context size limits, output limits and provider timeout configuration.
+- Account recovery, email verification, MFA, organization roles, audit log export and independent penetration testing remain incomplete.
+- Billing, checkout, trial activation and license verification are disabled.
+- Hardware bridge reports no connected devices unless a real adapter is integrated. No telemetry is fabricated.
+- Project and experiment data require PostgreSQL; set backups, retention, TLS and restore procedures at the hosting provider.
+- AI responses are advisory. Do not treat generated code, scientific explanations or architecture as validated evidence.
 
-- Billing, checkout, trial activation and license verification are **disabled**. The previous implementation generated fabricated invoices and accepted arbitrary license strings; it must not be used to charge users or represent paid entitlements.
-- Project storage is currently in process memory. Data can be lost on restart and is not isolated between authenticated users. Do not store confidential research or personal data.
-- There is no production authentication, organization isolation, durable database, audit log or role-based authorization yet.
-- Hardware names and compatibility references are not evidence of a tested hardware connection. Physical device support must be demonstrated with device-specific integration tests.
-- AI output is advisory and may be incorrect. Do not treat generated architecture, code or scientific claims as verified results.
+See [Security and product limits](docs/SECURITY_AND_PRODUCT_LIMITS.md) and [Architecture](docs/ARCHITECTURE.md).
 
-See [docs/SECURITY_AND_PRODUCT_LIMITS.md](docs/SECURITY_AND_PRODUCT_LIMITS.md) and [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
+## Official dataset adapters
 
-## Scientific reproducibility
+Install Tonic 1.6.0 in an isolated Python environment, then use validation/official_datasets.py to export N-MNIST, DVS Gesture or SHD train/test splits. Review the upstream license and provide it explicitly to the exporter. The script records canonical CSV and split hashes; it does not download full datasets in CI.
 
-Every experiment intended for publication or a competition should record:
-1. model equations and parameter units;
-2. integration method, timestep and numerical tolerances;
-3. random seeds and stochastic assumptions;
-4. dataset provenance, preprocessing and train/validation/test splits;
-5. baseline/reference implementation and version;
-6. metrics, confidence intervals and raw outputs;
-7. hardware, firmware, compiler and measurement setup where applicable.
+## Remaining independent evidence
 
-A chart or successful UI run is not by itself evidence of model validity. Use the validation checklist in [docs/SCIENTIFIC_VALIDATION.md](docs/SCIENTIFIC_VALIDATION.md).
+- NEST cross-checks and broader Brian2 network/STDP reference traces.
+- External researcher reproduction from a frozen manifest.
+- Full official dataset holdout experiments, multiple seeds and baseline result archives.
+- Physical Loihi 2 / Akida / SpiNNaker 2 / Speck / MCU board builds, timing, power and I/O validation.
+- Deployment-specific database backup/restore drill, security review and account recovery.
 
-## Contributing
-
-Please include a reproducible test or reference comparison for changes to numerical models, event encoders, plasticity rules, benchmarks or energy estimates. Avoid presenting simulated estimates as measured hardware results.
+No scientific or hardware readiness claim should be promoted without retaining the evidence.
 
 ## License
 
-No repository license has been established yet. Until an explicit license is added, all rights are reserved by the copyright holder; do not assume the code is open source or reuse it under an unverified license.
+No repository license has been established. Do not assume the code is open source or reusable under an unverified license.
