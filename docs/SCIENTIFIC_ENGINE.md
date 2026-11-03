@@ -2,7 +2,7 @@
 
 ## Scope and conventions
 
-The deterministic core provides independently callable LIF, adaptive exponential integrate-and-fire (AdEx), and Izhikevich steps; Euler and classical RK4 integration; pair-based exponential STDP; a trace-based triplet STDP rule; fixed-step LIF and heterogeneous LIF/AdEx/Izhikevich networks; deterministic topology builders; delayed synaptic events; spike-train statistics; raster binning; event CSV validation; benchmark metrics; and constrained exporter generators.
+The deterministic core provides independently callable LIF, adaptive exponential integrate-and-fire (AdEx), and Izhikevich steps. The live neuron sandbox now calls these same tested functions rather than maintaining separate equations; it exposes all three models and uses a seeded PRNG for noise and Poisson stimulation. It supports RK4 integration in the live display. The engine also provides Euler and classical RK4 integration; pair-based exponential STDP; a trace-based triplet STDP rule; fixed-step LIF and heterogeneous LIF/AdEx/Izhikevich networks; deterministic topology builders; delayed synaptic events; spike-train statistics; raster binning; event CSV validation; benchmark metrics; and constrained exporter generators.
 
 Time is milliseconds and voltage is mV. LIF/AdEx inputs use pA, LIF resistance uses MOhm, AdEx capacitance pF and conductance nS. Izhikevich uses the canonical normalized model drive in its quadratic equation; its input is not pA. Heterogeneous network connection weights are interpreted in the target neuron's input convention.
 
