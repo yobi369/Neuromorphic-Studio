@@ -2,7 +2,7 @@ import { stepLif, stepAdEx, stepIzhikevich, LifParameters, LifState, AdExParamet
 import { TripletStdpParameters, TripletStdpState, createTripletStdpState, tripletStdpPre, tripletStdpPost } from "./triplet-stdp.ts";
 export type NeuronSpec =
  | {id:number;model:"lif";parameters:LifParameters;state:LifState;biasInput?:number}
- | {id:number;model:"adex";parameters:AdExParameters;state:AdExState;biasPa?:number}
+ | {id:number;model:"adex";parameters:AdExParameters;state:AdExState;biasInput?:number}
  | {id:number;model:"izhikevich";parameters:IzhikevichParameters;state:IzhikevichState;biasPa?:number};
 export interface Connection {id:string;from:number;to:number;weight:number;delayMs:number;plasticity?:StdpParameters;tripletPlasticity?:TripletStdpParameters;stdpState?:StdpState;tripletState?:TripletStdpState;}
 export interface TimedSpike {neuronId:number;timeMs:number;}
@@ -34,8 +34,8 @@ export class HeterogeneousNetwork {
    this.spikes.push(spike);
    for(const c of this.connections)if(c.from===spike.neuronId)this.queue.push({at:spike.timeMs+c.delayMs,target:c.to,current:c.weight,connectionId:c.id,sequence:this.sequence++});
    for(const c of this.connections)if(c.to===spike.neuronId){
-    if(c.plasticity&&c.stdpState){c.stdpState=stdpPost(c.stdpState,c.plasticity,spike.timeMs);c.weightPa=c.stdpState.weight;}
-    if(c.tripletPlasticity&&c.tripletState){c.tripletState=tripletStdpPost(c.tripletState,c.tripletPlasticity,spike.timeMs);c.weightPa=c.tripletState.weight;}
+    if(c.plasticity&&c.stdpState){c.stdpState=stdpPost(c.stdpState,c.plasticity,spike.timeMs);c.weight=c.stdpState.weight;}
+    if(c.tripletPlasticity&&c.tripletState){c.tripletState=tripletStdpPost(c.tripletState,c.tripletPlasticity,spike.timeMs);c.weight=c.tripletState.weight;}
    }
   }
   this.clock=now+h;return fired;
