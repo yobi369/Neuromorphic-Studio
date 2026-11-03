@@ -34,8 +34,8 @@ export function stepAdEx(s:AdExState,p:AdExParameters,i:number,dt:number,m:Integ
  const [v,w]=pair(s.voltageMv,s.adaptationPa,dt,f,g,m);
  return v>=p.spikeCutoffMv?{state:{voltageMv:p.resetMv,adaptationPa:w+p.adaptationBPa},spike:true}:{state:{voltageMv:v,adaptationPa:w},spike:false};
 }
-export function stepIzhikevich(s:IzhikevichState,p:IzhikevichParameters,i:number,dt:number,m:Integrator="rk4"):StepResult<IzhikevichState>{
- validateStep(dt,i);const f=(v:number,u:number)=>0.04*v*v+5*v+140-u+i,g=(v:number,u:number)=>p.a*(p.b*v-u);
+export function stepIzhikevich(s:IzhikevichState,p:IzhikevichParameters,inputDrive:number,dt:number,m:Integrator="rk4"):StepResult<IzhikevichState>{
+ validateStep(dt,inputDrive);const f=(v:number,u:number)=>0.04*v*v+5*v+140-u+inputDrive,g=(v:number,u:number)=>p.a*(p.b*v-u);
  const [v,u]=pair(s.voltageMv,s.recovery,dt,f,g,m);
  return v>=p.spikeCutoffMv?{state:{voltageMv:p.c,recovery:u+p.d},spike:true}:{state:{voltageMv:v,recovery:u},spike:false};
 }
