@@ -1,0 +1,6 @@
+{
+  "name": "Neuromorphic Studio",
+  "description": "Interactive Spiking Neural Network (SNN) development platform featuring real-time DVS event camera simulation, biological neuron models, STDP plasticity, edge hardware energy profiling, and neuromorphic code export.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
