@@ -364,7 +364,7 @@ export function HardwareProfilerView() {
           </div>
 
           <div className="p-4 rounded-xl border border-emerald-500/40 bg-slate-950 space-y-1">
-            <span className="text-[10px] font-mono text-slate-500 uppercase">Total Silicon Power</span>
+            <span className="text-[10px] font-mono text-slate-500 uppercase">Scenario total power</span>
             <div className="text-xl font-extrabold text-emerald-400 font-mono">
               {energyPerSopInput > 0 || idlePowerInputMw > 0 ? (totalPowerMilliwatts < 1000 ? `${totalPowerMilliwatts.toFixed(3)} mW` : `${(totalPowerMilliwatts / 1000).toFixed(3)} W`) : "Enter assumptions"}
             </div>
@@ -378,7 +378,7 @@ export function HardwareProfilerView() {
             <div className="text-xl font-extrabold text-teal-300 font-mono">
               {powerReductionPct === null ? "Not calculated" : `${powerReductionPct.toFixed(1)}%`}
             </div>
-            <p className="text-[10px] text-slate-500">Direct battery savings</p>
+            <p className="text-[10px] text-slate-500">Scenario comparison</p>
           </div>
 
           <div className="p-4 rounded-xl border border-slate-800 bg-slate-950 space-y-1">
