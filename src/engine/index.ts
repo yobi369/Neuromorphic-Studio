@@ -51,7 +51,7 @@ export function stdpPost(s:StdpState,p:StdpParameters,t:number):StdpState{const 
 export interface NetworkNeuron{id:number;model:"lif";state:LifState;parameters:LifParameters;biasCurrentPa?:number;}
 export interface NetworkSynapse{id:string;from:number;to:number;weightPa:number;delayMs:number;plasticity?:StdpParameters;stdpState?:StdpState;}
 export interface NetworkSpike{neuronId:number;timeMs:number;}
-interface QueuedEvent{atMs:number;target:number;currentPa:number;}
+interface QueuedEvent{atMs:number;target:number;currentPa:number;synapseId:string;}
 export interface NetworkStep{timeMs:number;spikes:NetworkSpike[];deliveredEvents:number;}
 export class EventDrivenNetwork{
  private neurons=new Map<number,NetworkNeuron>();private synapses:NetworkSynapse[]=[];private queue:QueuedEvent[]=[];private clock=0;readonly spikeHistory:NetworkSpike[]=[];
@@ -62,9 +62,11 @@ export class EventDrivenNetwork{
  get timeMs(){return this.clock;}getWeights(){return this.synapses.map(s=>({id:s.id,weightPa:s.weightPa}));}
  step(dt:number,external:ReadonlyMap<number,number>=new Map(),method:Integrator="rk4"):NetworkStep{
   positive(dt,"dtMs");const end=this.clock+dt,due=this.queue.filter(e=>e.atMs<=end+1e-12);this.queue=this.queue.filter(e=>e.atMs>end+1e-12);
-  const currents=new Map<number,number>();for(const e of due)currents.set(e.target,(currents.get(e.target)||0)+e.currentPa);for(const [id,v] of external)currents.set(id,(currents.get(id)||0)+v);
+  const currents=new Map<number,number>();
+  for(const e of due.sort((a,b)=>a.atMs-b.atMs)){const syn=this.synapses.find(s=>s.id===e.synapseId);if(syn?.plasticity&&syn.stdpState){syn.stdpState=stdpPre(syn.stdpState,syn.plasticity,e.atMs);syn.weightPa=syn.stdpState.weight;}currents.set(e.target,(currents.get(e.target)||0)+e.currentPa);}
+  for(const [id,v] of external)currents.set(id,(currents.get(id)||0)+v);
   const spikes:NetworkSpike[]=[];for(const n of this.neurons.values()){const r=stepLif(n.state,n.parameters,(n.biasCurrentPa||0)+(currents.get(n.id)||0),dt,method);n.state=r.state;if(r.spike)spikes.push({neuronId:n.id,timeMs:end});}
-  for(const sp of spikes){this.spikeHistory.push(sp);for(const syn of this.synapses.filter(s=>s.from===sp.neuronId)){this.queue.push({atMs:end+syn.delayMs,target:syn.to,currentPa:syn.weightPa});if(syn.plasticity&&syn.stdpState)syn.stdpState=stdpPre(syn.stdpState,syn.plasticity,end+syn.delayMs);}
+  for(const sp of spikes){this.spikeHistory.push(sp);for(const syn of this.synapses.filter(s=>s.from===sp.neuronId)){this.queue.push({atMs:end+syn.delayMs,target:syn.to,currentPa:syn.weightPa,synapseId:syn.id});}
    for(const syn of this.synapses.filter(s=>s.to===sp.neuronId&&s.plasticity&&s.stdpState)){syn.stdpState=stdpPost(syn.stdpState!,syn.plasticity!,end);syn.weightPa=syn.stdpState.weight;}}
   this.clock=end;return {timeMs:end,spikes,deliveredEvents:due.length};
  }
