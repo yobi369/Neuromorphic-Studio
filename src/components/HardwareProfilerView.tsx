@@ -98,7 +98,8 @@ export function HardwareProfilerView() {
   // Workload Calculator Inputs
   const [eventRateKeps, setEventRateKeps] = useState<number>(50); // 50 kEPS from DVS
   const [synapticFanOut, setSynapticFanOut] = useState<number>(64); // connections per spike
-  const [activeDutyCycle, setActiveDutyCycle] = useState<number>(15); // illustrative workload assumption\n  const [energyPerSopInput, setEnergyPerSopInput] = useState<number>(0);\n  const [idlePowerInputMw, setIdlePowerInputMw] = useState<number>(0);\n  const [gpuBaselineInputMw, setGpuBaselineInputMw] = useState<number>(0);\n  const [batteryCapacityInputMwh, setBatteryCapacityInputMwh] = useState<number>(0);
+  const [activeDutyCycle, setActiveDutyCycle] = useState<number>(15); // illustrative workload assumption
+  const [energyPerSopInput, setEnergyPerSopInput] = useState<number>(0);\n  const [idlePowerInputMw, setIdlePowerInputMw] = useState<number>(0);\n  const [gpuBaselineInputMw, setGpuBaselineInputMw] = useState<number>(0);\n  const [batteryCapacityInputMwh, setBatteryCapacityInputMwh] = useState<number>(0);
 
   const selectedChip = hardwareDatabase.find((c) => c.id === selectedChipId) || hardwareDatabase[0];
 
