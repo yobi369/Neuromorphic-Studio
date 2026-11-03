@@ -143,7 +143,7 @@ async function startServer() {
   }));
 
   // Constrained code exporters. Output is a scaffold, not a certified hardware binary.
-  app.post("/api/export/compile", (req: Request, res: Response) => {
+  app.post("/api/export/compile", requireAuthenticatedUser, (req: Request, res: Response) => {
     const b = req.body || {};
     const targets: Record<string, "lava" | "snntorch" | "embedded-c"> = {
       lava_python: "lava", snntorch_pytorch: "snntorch", cpp_micro: "embedded-c",
