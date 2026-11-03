@@ -268,6 +268,11 @@ export function DvsEncoderView() {
       onCountRef.current += onEvents;
       offCountRef.current += offEvents;
 
+      if(sampleEvents.length>0){
+        recentEventsBufferRef.current.push(...sampleEvents);
+        if(recentEventsBufferRef.current.length>1000)recentEventsBufferRef.current=recentEventsBufferRef.current.slice(-1000);
+      }
+
       // Audio feedback if events fired
       if (currentFrameEvents > 15) {
         spikeAudio.playSpike(Math.min(1.0, currentFrameEvents / 200), 1.0);
@@ -287,10 +292,9 @@ export function DvsEncoderView() {
             off: Math.round((offCountRef.current / total) * 100),
           });
         }
-        if (sampleEvents.length > 0) {
-          recentEventsBufferRef.current.push(...sampleEvents);
-          if (recentEventsBufferRef.current.length > 1000) recentEventsBufferRef.current = recentEventsBufferRef.current.slice(-1000);
+        if(recentEventsBufferRef.current.length>0){
           setRecentEvents([...recentEventsBufferRef.current]);
+          recentEventsBufferRef.current=[];
         }
 
         lastEventCountRef.current = 0;
