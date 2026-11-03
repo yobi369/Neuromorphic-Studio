@@ -36,6 +36,7 @@ export function ModelExporterModal({
   const [filename, setFilename] = useState("");
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [exportError, setExportError] = useState("");
 
   const targets: {
     id: ExportTarget;
@@ -73,15 +74,6 @@ export function ModelExporterModal({
       badge: "GCC smoke-tested",
       requiresTier: "community",
     },
-    {
-      id: "onnx_spiking",
-      name: "Topology JSON schema preview",
-      ext: ".json",
-      runtime: "JSON manifest only",
-      description: "Topology metadata preview, not an ONNX model, executable graph or hardware compiler input.",
-      badge: "Schema only",
-      requiresTier: "community",
-    },
   ];
 
   const fetchExport = async () => {
@@ -103,12 +95,12 @@ export function ModelExporterModal({
         }),
       });
       const data = await res.json();
-      if (data.success) {
-        setGeneratedCode(data.code);
-        setFilename(data.filename);
-      }
+      if (!res.ok || !data.success) throw new Error(data.error || "Export generation failed.");
+      setGeneratedCode(data.code);
+      setFilename(data.filename);
+      setExportError("");
     } catch (err) {
-      console.error("Failed to compile export:", err);
+      setExportError(err instanceof Error ? err.message : "Export generation failed.");
     } finally {
       setLoading(false);
     }
@@ -307,6 +299,8 @@ export function ModelExporterModal({
             </button>
           </div>
         </div>
+
+        {exportError && <p role="alert" className="mx-6 mt-3 rounded border border-rose-700/40 bg-rose-950/20 p-3 text-xs text-rose-300">{exportError}</p>}
 
         {/* Code Preview Area */}
         <div className="relative p-6 max-h-[50vh] overflow-y-auto bg-[#020617] font-mono text-xs text-slate-300">
