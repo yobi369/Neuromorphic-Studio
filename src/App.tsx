@@ -25,8 +25,15 @@ export default function App() {
     const saved = localStorage.getItem("neuromorphic_user_profile");
     if (saved) {
       try {
-        return JSON.parse(saved);
-      } catch (e) {}
+        const parsed = JSON.parse(saved);
+        const isLegacyDemoProfile =
+          parsed?.email === "elena.rostova@neuromorphic-systems.org" ||
+          parsed?.licenseKey === "NEURO-PRO-2026-RCH3-AKIDA";
+        if (!isLegacyDemoProfile) return parsed;
+        localStorage.removeItem("neuromorphic_user_profile");
+      } catch {
+        localStorage.removeItem("neuromorphic_user_profile");
+      }
     }
     return {
       id: "usr-8819",
