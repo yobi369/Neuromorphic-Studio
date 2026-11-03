@@ -36,3 +36,7 @@
 ## Release gates
 
 Do not describe the service as production-ready until database backups have been restored in a drill, account lifecycle/security review is complete, the lockfile and action pinning are complete, and the relevant scientific/hardware validation evidence exists. Billing and physical hardware control remain disabled.
+\n## Explicitly unavailable capabilities\n\n- Binary AEDAT decoding and complete raw sensor capture archival.
+- Execution of user-supplied microcode, C firmware or Lava source from the browser.
+- Hardware cycle, energy, SRAM/flash, device telemetry or certified deployment claims.
+- Billing, checkout, subscription management and license verification.
