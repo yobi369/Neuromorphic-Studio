@@ -19,7 +19,8 @@ export function NeuromorphicRoiCalculator() {
   // Deployment inputs
   const [fleetSize, setFleetSize] = useState<number>(5000); // 5,000 edge IoT / drone units
   const [batteryCapacityMah, setBatteryCapacityMah] = useState<number>(1200); // 1200 mAh Li-Ion
-  const [batteryVoltage] = useState<number>(3.7); // 3.7V nominal
+  const [batteryVoltage, setBatteryVoltage] = useState<number>(3.7); // illustrative battery assumption
+  const [gridCarbonIntensity, setGridCarbonIntensity] = useState<number>(0.386); // illustrative kg CO2e/kWh; replace with local source
   const [sparsityPercent, setSparsityPercent] = useState<number>(94); // 94% idle/sparse
   const [batterySwapLaborCost, setBatterySwapLaborCost] = useState<number>(45); // $45 per field technician swap
   const [batteryCellCost, setBatteryCellCost] = useState<number>(6.5); // $6.50 per replacement cell
@@ -73,7 +74,7 @@ export function NeuromorphicRoiCalculator() {
   const totalKwhSaved = Math.max(0, mcuTotalKwh - snnTotalKwh);
 
   // Illustrative carbon factor (0.386 kg CO2e/kWh); replace with a current location-specific source
-  const co2AvoidedKg = totalKwhSaved * 0.386;
+  const co2AvoidedKg = totalKwhSaved * gridCarbonIntensity;
 
   const copyExecutiveSummary = () => {
     const text = `===============================================================
@@ -157,7 +158,7 @@ Battery Longevity:
                 <Cpu className="w-4 h-4 text-cyan-400" />
                 <span>Deployment &amp; Fleet Parameters</span>
               </h3>
-              <span className="text-[10px] font-mono text-slate-500">Live Simulation</span>
+              <span className="text-[10px] font-mono text-amber-300">Editable scenario</span>
             </div>
 
             {/* Fleet Size */}
@@ -204,6 +205,11 @@ Battery Longevity:
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-3">
+              <label className="text-[11px] text-slate-400 font-mono">Battery voltage (V)<input type="number" min="0.1" step="0.1" value={batteryVoltage} onChange={e=>setBatteryVoltage(Math.max(0.1,Number(e.target.value)))} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-800 p-2 text-xs text-slate-200"/></label>
+              <label className="text-[11px] text-slate-400 font-mono">Grid carbon intensity (kg/kWh)<input type="number" min="0" step="0.001" value={gridCarbonIntensity} onChange={e=>setGridCarbonIntensity(Math.max(0,Number(e.target.value)))} className="mt-1 w-full rounded-lg bg-slate-950 border border-slate-800 p-2 text-xs text-slate-200"/></label>
+            </div>
+
             {/* Event Sparsity */}
             <div className="space-y-1.5">
               <div className="flex justify-between text-xs font-mono text-slate-300">
@@ -220,7 +226,7 @@ Battery Longevity:
                 className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-400"
               />
               <p className="text-[10px] text-slate-500 leading-tight">
-                Percentage of time the scene has zero motion/sound where neuromorphic silicon enters microsecond sub-microwatt sleep.
+                Scenario assumption for the percentage of time the workload is inactive. Replace this with a measured workload duty cycle.
               </p>
             </div>
 
