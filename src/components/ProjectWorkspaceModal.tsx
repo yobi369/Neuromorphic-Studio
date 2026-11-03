@@ -255,6 +255,7 @@ export function ProjectWorkspaceModal({
                     onChange={(e) => setNewProjectHardware(e.target.value)}
                     className="w-full px-3 py-2 rounded-lg bg-slate-950 border border-slate-700 text-slate-100 focus:outline-none focus:border-cyan-400"
                   >
+                    <option value="Not selected">Not selected</option>
                     <option value="Intel Loihi 2 (Lava SDK)">Intel Loihi 2 (Lava SDK)</option>
                     <option value="BrainChip Akida AKD1000">BrainChip Akida AKD1000</option>
                     <option value="SynSense Speck SoC">SynSense Speck SoC</option>
