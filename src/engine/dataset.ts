@@ -14,7 +14,7 @@ export function parseEventCsv(csv:string,width:number,height:number):EventRecord
   last.set(key,timestampUs);return {sampleId,label,split,timestampUs,x,y,polarity:polarity as 1|-1};});
 }
 export function validateDatasetManifest(m:DatasetManifest,events:EventRecord[]){
- if(!m||!m.name?.trim()||!m.version?.trim()||!m.source?.trim()||!m.license?.trim()||!m.preprocessing?.trim())throw new Error("dataset provenance fields are required");
+ if(!m||!["train","validation","test"].includes(m.split)||!m.name?.trim()||!m.version?.trim()||!m.source?.trim()||!m.license?.trim()||!m.preprocessing?.trim())throw new Error("dataset provenance fields are required");
  if(!/^[a-f0-9]{64}$/i.test(m.sha256)||!/^[a-f0-9]{64}$/i.test(m.splitHash))throw new Error("dataset and split hashes must be SHA-256 hex digests");
  if(!Number.isInteger(m.seed)||!Number.isInteger(m.sampleCount)||!Number.isInteger(m.eventCount)||m.sampleCount<1||m.eventCount<1)throw new Error("invalid dataset counts or seed");
  if(events.length!==m.eventCount)throw new Error("manifest eventCount does not match parsed events");
