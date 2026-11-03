@@ -124,11 +124,15 @@ export function NeuronSandboxView() {
       lastSpikeTime: -999,
     };
     randomRef.current = 0x6d2b79f5;
+    accumulatorRef.current = 0;
+    lastFrameTimeRef.current = performance.now();
     setSpikeCount(0);
     setInstantRateHz(0);
   };
 
   const randomRef = useRef(0x6d2b79f5);
+  const accumulatorRef = useRef(0);
+  const lastFrameTimeRef = useRef(performance.now());
   const nextRandom = () => { let x = randomRef.current; x ^= x << 13; x ^= x >>> 17; x ^= x << 5; randomRef.current = x >>> 0; return (randomRef.current >>> 0) / 4294967296; };
   const nextGaussian = () => { const u1 = Math.max(1e-12, nextRandom()); return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * nextRandom()); };
 
@@ -137,16 +141,21 @@ export function NeuronSandboxView() {
   // Physics Simulation Loop
   useEffect(() => {
     let animId: number;
-    const dt = 0.2; // ms integration step
+    const dt = 0.2; // fixed ms integration step
 
     const stepSimulation = () => {
+      const now = performance.now();
       if (!isSimulating) {
+        lastFrameTimeRef.current = now;
         animId = requestAnimationFrame(stepSimulation);
         return;
       }
-
+      const elapsed = Math.min(32, Math.max(0, now - lastFrameTimeRef.current));
+      lastFrameTimeRef.current = now;
+      accumulatorRef.current += elapsed;
+      const stepsPerFrame = Math.min(160, Math.floor(accumulatorRef.current / dt));
+      accumulatorRef.current -= stepsPerFrame * dt;
       const st = stateRef.current;
-      const stepsPerFrame = 6; // Fast integration for 60fps
 
       for (let step = 0; step < stepsPerFrame; step++) {
         st.timeMs += dt;
