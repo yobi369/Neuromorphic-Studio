@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
-import { initializePersistence, registerInfrastructureRoutes, requireAuthenticatedUser, consumeAiQuota, consumeEvaluationQuota } from "./server/persistence";
+import { initializePersistence, registerInfrastructureRoutes, requireAuthenticatedUser, consumeAiQuota, consumeEvaluationQuota, checkPersistence } from "./server/persistence";
 import { exportModel } from "./src/engine/exporters";
 import { filterBackgroundActivity } from "./src/engine/event-filters";
 import { HeterogeneousNetwork, ringTopology, seededRandom } from "./src/engine/network";
@@ -47,6 +47,14 @@ async function startServer() {
   // API Routes
   app.get("/api/health", (_req: Request, res: Response) => {
     res.json({ status: "ok", service: "Neuromorphic Studio API", databaseConfigured: persistenceReady });
+  });
+
+  app.get("/api/ready", async (_req: Request, res: Response) => {
+    const databaseReady = persistenceReady && await checkPersistence();
+    return res.status(databaseReady ? 200 : 503).json({
+      status: databaseReady ? "ready" : "not_ready",
+      database: databaseReady ? "reachable" : "unavailable",
+    });
   });
 
   // Guarded server-side research assistant. This endpoint is advisory, not a compiler.
