@@ -37,7 +37,7 @@ export default function App() {
       }
     }
     return {
-      id: "usr-8819",
+      id: "local-researcher",
       name: "Researcher",
       email: "",
       institution: "Personal workspace",
@@ -45,7 +45,7 @@ export default function App() {
       role: "Research Engineer",
       licenseKey: "",
       licenseValidUntil: "",
-      activeWorkspace: "My workspace",
+      activeWorkspace: "Personal workspace",
     };
   });
 
