@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { StdpParams } from "../types";
+import { createStdpState, stdpPre, stdpPost, StdpState, StdpParameters } from "../engine/index";
 import { spikeAudio } from "../utils/audioSynth";
 import {
   Zap,
@@ -29,6 +30,13 @@ export function StdpLabView() {
   // Interactive single spike delta t slider
   const [deltaT, setDeltaT] = useState<number>(10.0); // ms
   const [currentWeight, setCurrentWeight] = useState<number>(0.5);
+  const stdpStateRef = useRef<StdpState>(createStdpState(0.5));
+  const stdpClockRef = useRef(0);
+  const bellStateRef = useRef<StdpState>(createStdpState(0.1));
+  const bellClockRef = useRef(0);
+  const randomRef = useRef(0x4f1bbcdc);
+  const nextRandom = () => { let x=randomRef.current; x^=x<<13; x^=x>>>17; x^=x<<5; randomRef.current=x>>>0; return (randomRef.current>>>0)/4294967296; };
+  const engineParams = ():StdpParameters => ({aPlus:params.a_plus,aMinus:params.a_minus,tauPlusMs:params.tau_plus,tauMinusMs:params.tau_minus,minWeight:params.w_min,maxWeight:params.w_max});
 
   // Correlation experiment mode
   const [experimentMode, setExperimentMode] = useState<"manual" | "correlated_train" | "pavlov_conditioning">("manual");
@@ -61,16 +69,21 @@ export function StdpLabView() {
 
   // Apply manual single-pair spike
   const handleApplySinglePair = () => {
-    const dw = calculateDeltaW(deltaT);
-    const newW = Math.max(params.w_min, Math.min(params.w_max, currentWeight + dw));
-    setCurrentWeight(Number(newW.toFixed(4)));
-    setWeightHistory((prev) => [...prev.slice(-100), newW]);
-    spikeAudio.playSpike(0.8, deltaT > 0 ? 1.2 : 0.8);
+    const p=engineParams(),t=stdpClockRef.current;
+    let next=stdpStateRef.current;
+    if(deltaT>0){next=stdpPre(next,p,t);next=stdpPost(next,p,t+deltaT);}
+    else if(deltaT<0){next=stdpPost(next,p,t);next=stdpPre(next,p,t+Math.abs(deltaT));}
+    stdpStateRef.current=next;stdpClockRef.current=t+Math.abs(deltaT)+1;
+    setCurrentWeight(Number(next.weight.toFixed(4)));
+    setWeightHistory(prev=>[...prev.slice(-100),next.weight]);
+    spikeAudio.playSpike(0.8,deltaT>0?1.2:0.8);
   };
 
   // Reset experiment
   const handleReset = () => {
     setCurrentWeight(params.w_init);
+    stdpStateRef.current=createStdpState(params.w_init);stdpClockRef.current=0;
+    bellStateRef.current=createStdpState(0.1);bellClockRef.current=0;randomRef.current=0x4f1bbcdc;
     setWeightHistory([params.w_init]);
     setPavlovTrials(0);
     setBellWeight(0.1);
