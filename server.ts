@@ -96,7 +96,7 @@ async function startServer() {
       const leakage = assertNoSplitLeakage(events);
       const sourceHash = createHash("sha256").update(csv).digest("hex");
       const sampleIds = [...new Set(events.filter(e => e.split === manifest?.split).map(e => e.sampleId))].sort();
-      const splitHash = createHash("sha256").update(sampleIds.join("\\n")).digest("hex");
+      const splitHash = createHash("sha256").update(sampleIds.join("\n")).digest("hex");
       const checked = validateDatasetManifest(manifest, events);
       if (manifest.sha256.toLowerCase() !== sourceHash) return res.status(422).json({ error: "Dataset source SHA-256 does not match uploaded CSV bytes." });
       if (manifest.splitHash.toLowerCase() !== splitHash) return res.status(422).json({ error: "Split SHA-256 does not match sorted sample IDs in the selected split." });
