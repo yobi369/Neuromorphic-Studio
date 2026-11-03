@@ -30,14 +30,14 @@ export default function App() {
     }
     return {
       id: "usr-8819",
-      name: "Dr. Elena Rostova",
-      email: "elena.rostova@neuromorphic-systems.org",
-      institution: "Advanced Brain-Inspired Edge Computing Lab",
-      tier: "pro" as CommercialTier,
-      role: "Lead Scientist",
-      licenseKey: "NEURO-PRO-2026-RCH3-AKIDA",
-      licenseValidUntil: "2027-06-30T00:00:00Z",
-      activeWorkspace: "Autonomous Robotics Lab",
+      name: "Researcher",
+      email: "",
+      institution: "Personal workspace",
+      tier: "community" as CommercialTier,
+      role: "Research Engineer",
+      licenseKey: "",
+      licenseValidUntil: "",
+      activeWorkspace: "My workspace",
     };
   });
 
