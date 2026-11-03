@@ -89,11 +89,11 @@ async function startServer() {
     code: "DATASET_RUNNER_NOT_IMPLEMENTED",
   }));
   app.post("/api/datasets/validate-events", requireAuthenticatedUser, async (req: Request, res: Response) => {
+    const csv = req.body?.csv, width = Number(req.body?.width), height = Number(req.body?.height), manifest = req.body?.manifest;
+    if (typeof csv !== "string" || csv.length > 180_000) return res.status(400).json({ error: "Event CSV must be supplied as a string no larger than 180 KB." });
     let quota: "ok" | "minute" | "day"; try { quota = await consumeEvaluationQuota(String(res.locals.userId)); } catch { return res.status(503).json({ error: "Evaluation quota storage unavailable." }); }
     if (quota === "minute") return res.status(429).json({ error: "Dataset validation rate limit reached." });
     if (quota === "day") return res.status(429).json({ error: "Daily dataset validation allowance reached." });
-    const csv = req.body?.csv, width = Number(req.body?.width), height = Number(req.body?.height), manifest = req.body?.manifest;
-    if (typeof csv !== "string" || csv.length > 180_000) return res.status(400).json({ error: "Event CSV must be supplied as a string no larger than 180 KB." });
     try {
       const events = parseEventCsv(csv, width, height);
       const leakage = assertNoSplitLeakage(events);
@@ -107,9 +107,6 @@ async function startServer() {
     } catch (err: any) { return res.status(400).json({ error: err?.message || "Dataset validation failed." }); }
   });
   app.post("/api/benchmarks/evaluate", requireAuthenticatedUser, async (req: Request, res: Response) => {
-    let quota: "ok" | "minute" | "day"; try { quota = await consumeEvaluationQuota(String(res.locals.userId)); } catch { return res.status(503).json({ error: "Evaluation quota storage unavailable." }); }
-    if (quota === "minute") return res.status(429).json({ error: "Benchmark evaluation rate limit reached." });
-    if (quota === "day") return res.status(429).json({ error: "Daily benchmark evaluation allowance reached." });
     const csv = req.body?.csv, manifest = req.body?.manifest;
     if (typeof csv !== "string" || csv.length > 180_000) return res.status(400).json({ error: "Prediction CSV must be a string no larger than 180 KB." });
     const sha = (v: unknown) => typeof v === "string" && /^[a-f0-9]{64}$/i.test(v);
@@ -117,6 +114,9 @@ async function startServer() {
         !sha(manifest.datasetSha256) || !["validation", "test"].includes(manifest.split) ||
         !manifest.preprocessing || !Number.isInteger(manifest.seed) || !sha(manifest.modelSha256) || !(typeof manifest.codeCommit === "string" && /^[a-f0-9]{40}([a-f0-9]{24})?$/i.test(manifest.codeCommit)) || manifest.seed < 0)
       return res.status(400).json({ error: "A complete reproducibility manifest is required: dataset name/version/hash, validation or test split, preprocessing, seed, model hash and code commit." });
+    let quota: "ok" | "minute" | "day"; try { quota = await consumeEvaluationQuota(String(res.locals.userId)); } catch { return res.status(503).json({ error: "Evaluation quota storage unavailable." }); }
+    if (quota === "minute") return res.status(429).json({ error: "Benchmark evaluation rate limit reached." });
+    if (quota === "day") return res.status(429).json({ error: "Daily benchmark evaluation allowance reached." });
     try {
       const rows = parseLabeledCsv(csv);
       const metrics = evaluatePredictions(rows);
