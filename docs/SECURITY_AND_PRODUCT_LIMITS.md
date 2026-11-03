@@ -8,7 +8,7 @@
 - PostgreSQL-backed registration/login with scrypt password hashes and random session tokens stored as SHA-256 digests.
 - HttpOnly, SameSite=Strict session cookies; Secure flag in production; origin checks for state-changing requests.
 - Per-user project and experiment access enforced in SQL predicates.
-- Database-backed AI quotas: 8 requests/minute and 60/day per account.
+- Database-backed AI quotas: 4 requests/minute and 20/day per account.
 - AI prompt limit 6,000 characters, context JSON limit 4 KiB, output cap 4,096 tokens / 24,000 returned characters, and provider HTTP timeout configuration.
 - Hardware endpoints return unavailable rather than presenting mock devices or telemetry.
 - Benchmark API accepts supplied prediction artifacts and records declared provenance; dataset hashes can be checked against canonical event CSV bytes.
