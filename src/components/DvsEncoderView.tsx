@@ -258,8 +258,6 @@ export function DvsEncoderView() {
                 sampleEvents.push({ t: nowMicros, x, y, p: -1 });
               }
               if(frameEvents.length<1000)frameEvents.push({t:nowMicros,x,y,p:-1});
-              if(false){
-              }
             }
             prev[pIdx] = lum; // Update reference memory on spike
           } else {
