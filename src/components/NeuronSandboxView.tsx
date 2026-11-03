@@ -4,7 +4,9 @@ import {
   IzhikevichPreset,
   LifParams,
   IzhikevichParams,
+  AdExParams,
 } from "../types";
+import { stepLif, stepAdEx, stepIzhikevich } from "../engine/index";
 import { spikeAudio } from "../utils/audioSynth";
 import {
   Activity,
@@ -23,7 +25,7 @@ export function NeuronSandboxView() {
   const [izhPreset, setIzhPreset] = useState<IzhikevichPreset>("regular_spiking");
 
   // Injected current parameters
-  const [currentInjection, setCurrentInjection] = useState<number>(10.0); // pA or mA
+  const [currentInjection, setCurrentInjection] = useState<number>(10.0); // nA for LIF/AdEx; normalized drive for Izhikevich
   const [noiseLevel, setNoiseLevel] = useState<number>(1.2);
   const [stimulusType, setStimulusType] = useState<"dc" | "pulse" | "sine" | "poisson">("dc");
 
@@ -46,6 +48,8 @@ export function NeuronSandboxView() {
     v_peak: 30.0,
   });
 
+  const [adexParams, setAdexParams] = useState<AdExParams>({ c_m: 200, g_l: 10, e_l: -70, v_t: -50, delta_t: 2, a: 2, tau_w: 100, b: 20, v_reset: -60 });
+
   // Simulation controls
   const [isSimulating, setIsSimulating] = useState<boolean>(true);
   const [spikeCount, setSpikeCount] = useState<number>(0);
@@ -59,6 +63,7 @@ export function NeuronSandboxView() {
   const stateRef = useRef<{
     v: number;
     u: number;
+    w: number;
     refractoryRemaining: number;
     timeMs: number;
     historyV: number[];
@@ -69,6 +74,7 @@ export function NeuronSandboxView() {
   }>({
     v: -65,
     u: -65 * 0.2,
+    w: 0,
     refractoryRemaining: 0,
     timeMs: 0,
     historyV: [],
@@ -106,8 +112,9 @@ export function NeuronSandboxView() {
   // Reset simulation state
   const resetSimulation = () => {
     stateRef.current = {
-      v: modelType === "lif" ? lifParams.v_rest : -65,
+      v: modelType === "lif" ? lifParams.v_rest : modelType === "adex" ? adexParams.e_l : -65,
       u: -65 * (modelType === "izhikevich" ? izhParams.b : 0.2),
+      w: 0,
       refractoryRemaining: 0,
       timeMs: 0,
       historyV: [],
@@ -116,9 +123,16 @@ export function NeuronSandboxView() {
       spikes: [],
       lastSpikeTime: -999,
     };
+    randomRef.current = 0x6d2b79f5;
     setSpikeCount(0);
     setInstantRateHz(0);
   };
+
+  const randomRef = useRef(0x6d2b79f5);
+  const nextRandom = () => { let x = randomRef.current; x ^= x << 13; x ^= x >>> 17; x ^= x << 5; randomRef.current = x >>> 0; return (randomRef.current >>> 0) / 4294967296; };
+  const nextGaussian = () => { const u1 = Math.max(1e-12, nextRandom()); return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * nextRandom()); };
+
+  useEffect(() => { resetSimulation(); }, [modelType]);
 
   // Physics Simulation Loop
   useEffect(() => {
@@ -156,64 +170,49 @@ export function NeuronSandboxView() {
         }
 
         let didSpike = false;
-
-        // 1. LIF Model Dynamics
         if (modelType === "lif") {
-          if (st.refractoryRemaining > 0) {
-            st.refractoryRemaining -= dt;
-            st.v = lifParams.v_reset;
-          } else {
-            // dv/dt = -(v - v_rest) / tau_m + (I * r_m) / tau_m
-            const dv = (-(st.v - lifParams.v_rest) + I * lifParams.r_m * 0.1) / lifParams.tau_m;
-            st.v += dv * dt;
-
-            if (st.v >= lifParams.v_thresh) {
-              didSpike = true;
-              st.v = 20; // action potential visual peak
-              st.refractoryRemaining = lifParams.tau_ref;
-            }
-          }
-        }
-        // 2. Izhikevich Model Dynamics
-        else if (modelType === "izhikevich") {
-          // dv/dt = 0.04 v^2 + 5v + 140 - u + I
-          // du/dt = a(bv - u)
-          const dv = 0.04 * st.v * st.v + 5 * st.v + 140 - st.u + I;
-          const du = izhParams.a * (izhParams.b * st.v - st.u);
-          st.v += dv * dt;
-          st.u += du * dt;
-
-          if (st.v >= izhParams.v_peak) {
-            didSpike = true;
-            st.v = izhParams.v_peak; // clamp to peak for visual
-          }
+          const result = stepLif(
+            { voltageMv: st.v, refractoryRemainingMs: st.refractoryRemaining },
+            { tauM: lifParams.tau_m, resistanceMOhm: lifParams.r_m, restMv: lifParams.v_rest, resetMv: lifParams.v_reset, thresholdMv: lifParams.v_thresh, refractoryMs: lifParams.tau_ref },
+            I * 1000, dt, "rk4",
+          );
+          st.v = result.state.voltageMv;
+          st.refractoryRemaining = result.state.refractoryRemainingMs;
+          didSpike = result.spike;
+        } else if (modelType === "adex") {
+          const result = stepAdEx(
+            { voltageMv: st.v, adaptationPa: st.w },
+            { capacitancePf: adexParams.c_m, leakConductanceNs: adexParams.g_l, leakReversalMv: adexParams.e_l, thresholdMv: adexParams.v_t, slopeFactorMv: adexParams.delta_t, adaptationA: adexParams.a, adaptationTauMs: adexParams.tau_w, adaptationBPa: adexParams.b, resetMv: adexParams.v_reset, spikeCutoffMv: 20 },
+            I * 1000, dt, "rk4",
+          );
+          st.v = result.state.voltageMv;
+          st.w = result.state.adaptationPa;
+          didSpike = result.spike;
+        } else {
+          const result = stepIzhikevich(
+            { voltageMv: st.v, recovery: st.u },
+            { a: izhParams.a, b: izhParams.b, c: izhParams.c, d: izhParams.d, spikeCutoffMv: izhParams.v_peak },
+            I, dt, "rk4",
+          );
+          st.v = result.state.voltageMv;
+          st.u = result.state.recovery;
+          didSpike = result.spike;
         }
 
         if (didSpike) {
           st.spikes.push(st.timeMs);
+          if (st.spikes.length > 10000) st.spikes.shift();
           spikeAudio.playSpike(0.7, 1.0);
           const isi = st.timeMs - st.lastSpikeTime;
           st.lastSpikeTime = st.timeMs;
-          if (isi > 0 && isi < 2000) {
-            setInstantRateHz(Math.round(1000 / isi));
-          }
+          if (isi > 0 && isi < 2000) setInstantRateHz(Math.round(1000 / isi));
           setSpikeCount((prev) => prev + 1);
-
-          // Post-spike reset (applied in next step)
-          setTimeout(() => {
-            if (modelType === "izhikevich") {
-              st.v = izhParams.c;
-              st.u += izhParams.d;
-            } else if (modelType === "lif") {
-              st.v = lifParams.v_reset;
-            }
-          }, 0);
         }
 
         // Buffer history (keep last 400 points)
-        st.historyV.push(st.v);
+        st.historyV.push(didSpike ? 20 : st.v);
         st.historyI.push(I);
-        st.historyU.push(st.u);
+        st.historyU.push(modelType === "adex" ? st.w : st.u);
         if (st.historyV.length > 350) {
           st.historyV.shift();
           st.historyI.shift();
@@ -367,6 +366,7 @@ export function NeuronSandboxView() {
     stimulusType,
     lifParams,
     izhParams,
+    adexParams,
   ]);
 
   return (
