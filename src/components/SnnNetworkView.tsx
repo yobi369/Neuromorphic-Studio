@@ -183,65 +183,52 @@ export function SnnNetworkView() {
 
       const neurons = neuronsRef.current;
       const synapses = synapsesRef.current;
-      const t = currentTime;
+      const engine = networkRef.current;
+      if (!engine || dt <= 0) { animIdRef.current = requestAnimationFrame(loop); return; }
 
-      // 1. External Stimulus Injection into Input Layer
-      neurons.forEach((n) => {
-        if (n.layer === "input") {
-          let injectedI = 0;
-          if (inputStimulus === "wave") {
-            injectedI = Math.max(
-              0,
-              Math.sin(t * 0.003 + n.id * 0.8) * 16 - 2
-            );
-          } else if (inputStimulus === "sparse_poisson") {
-            injectedI = Math.random() < 0.06 ? 18 : 0;
-          } else if (inputStimulus === "burst_ch1") {
-            if (n.id === 0 || n.id === 1) {
-              injectedI = (t % 600 < 120) ? 22 : 0;
-            }
-          }
-          // Subthreshold integration for input
-          n.v += (- (n.v + 70) / 10 + injectedI) * (dt * 0.1);
-        } else {
-          // Leak towards resting potential -70mV
-          n.v += (- (n.v + 70) / 15) * (dt * 0.1);
-        }
-      });
-
-      // 2. Check Spikes & Propagate Synaptic Currents
+      accumulatorRef.current += dt;
       let frameSpikes = 0;
       let frameSops = 0;
+      const activeIds = new Set<number>();
+      let substeps = 0;
 
-      neurons.forEach((n) => {
-        n.spiked = false;
-        if (n.v >= n.threshold) {
-          n.spiked = true;
-          n.v = -65; // Reset
+      // Fixed 1 ms simulation steps make the UI independent of display refresh rate.
+      while (accumulatorRef.current >= 1 && substeps < 32) {
+        const steps = engine.advance(1, 1, (timeMs) => {
+          const currents = new Map<number,number>();
+          for (const n of neurons) {
+            if (n.layer !== "input") continue;
+            let injected = 0;
+            if (inputStimulus === "wave") injected = Math.max(0,Math.sin(timeMs*0.003+n.id*0.8)*16-2);
+            else if (inputStimulus === "sparse_poisson") injected = stimulusRngRef.current()<0.06?18:0;
+            else if (inputStimulus === "burst_ch1" && (n.id===0||n.id===1)) injected = timeMs%600<120?22:0;
+            if (injected>0) currents.set(n.id,injected*100); // nA scenario drive converted to pA
+          }
+          return currents;
+        });
+        for (const step of steps) for (const spike of step.spikes) {
           frameSpikes++;
-          rasterDataRef.current.push({ id: n.id, time: t });
-
-          // Forward to outgoing synapses
-          synapses.forEach((syn) => {
-            if (syn.fromId === n.id) {
-              syn.lastActive = t;
-              frameSops++;
-              const target = neurons.find((tn) => tn.id === syn.toId);
-              if (target) {
-                target.v += syn.weight * 5.5 * synapticWeightScale;
-              }
-            }
-          });
+          activeIds.add(spike.neuronId);
+          rasterDataRef.current.push({id:spike.neuronId,time:spike.timeMs});
+          const visualNeuron=neurons.find(n=>n.id===spike.neuronId);
+          if(visualNeuron){visualNeuron.spikeHistory.push(spike.timeMs);if(visualNeuron.spikeHistory.length>1000)visualNeuron.spikeHistory.shift();}
+          for(const syn of synapses)if(syn.fromId===spike.neuronId){syn.lastActive=spike.timeMs;frameSops++;}
         }
-      });
-
-      if (frameSpikes > 0) {
-        spikeAudio.playSpike(Math.min(1.0, frameSpikes / 6), 1.0);
+        accumulatorRef.current-=1;
+        substeps++;
       }
 
+      for (const n of neurons) {
+        n.spiked=activeIds.has(n.id);
+        const state=engine.getState(n.id);
+        n.v=state.voltageMv;
+      }
+
+      if (frameSpikes > 0) spikeAudio.playSpike(Math.min(1.0,frameSpikes/6),1.0);
       lastSpikeCounterRef.current += frameSpikes;
-      setTotalNetworkSpikes((prev) => prev + frameSpikes);
-      setSynapticOpsCount((prev) => prev + frameSops);
+      setTotalNetworkSpikes(prev=>prev+frameSpikes);
+      setSynapticOpsCount(prev=>prev+frameSops);
+      const t=engine.timeMs;
 
       // Keep only last 4 seconds of raster data
       const cutoff = t - 4000;
@@ -254,7 +241,7 @@ export function SnnNetworkView() {
         const deltaSec = (currentTime - lastRateTimeRef.current) / 1000;
         const rate = Math.round(lastSpikeCounterRef.current / (deltaSec * neurons.length));
         setMeanFiringRateHz(rate);
-        const activePct = (frameSpikes / neurons.length) * 100;
+        const activePct = (activeIds.size / neurons.length) * 100;
         setCurrentSparsity(Number((100 - activePct).toFixed(1)));
         lastSpikeCounterRef.current = 0;
         lastRateTimeRef.current = currentTime;
