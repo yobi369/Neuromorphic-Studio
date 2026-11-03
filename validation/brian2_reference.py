@@ -52,9 +52,9 @@ run(.1*ms)
 
 fixture={
  "source":"Brian2 2.9.0; NumPy code generation; RK4; dt=0.01 ms",
- "lif":{"dtMs":1.0,"state":{"voltageMv":float(ml.v[0][-1]/mV)}},
- "adex":{"dtMs":0.1,"state":{"voltageMv":float(ma.v[0][-1]/mV),"adaptationPa":float(ma.w[0][-1]/pA)}},
- "izhikevich":{"dtMs":0.1,"state":{"voltageMv":float(mi.v[0][-1]/mV),"recovery":float(mi.u[0][-1])}}
+ "lif":{"dtMs":0.01,"steps":100,"state":{"voltageMv":float(lif.v[0]/mV)}},
+ "adex":{"dtMs":0.01,"steps":10,"state":{"voltageMv":float(adex.v[0]/mV),"adaptationPa":float(adex.w[0]/pA)}},
+ "izhikevich":{"dtMs":0.01,"steps":10,"state":{"voltageMv":float(izh.v[0]/mV),"recovery":float(izh.u[0])}}
 }
 Path("validation").mkdir(exist_ok=True)
 Path("validation/brian2-reference.json").write_text(json.dumps(fixture,indent=2)+"\n")
