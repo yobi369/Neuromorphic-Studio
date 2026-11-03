@@ -160,12 +160,12 @@ export function NeuronSandboxView() {
           I = currentInjection * (1 + 0.8 * Math.sin(st.timeMs * 0.015));
         } else if (stimulusType === "poisson") {
           // Poisson spike inputs
-          I = Math.random() < 0.08 ? currentInjection * 3.5 : 0;
+          I = nextRandom() < 0.08 ? currentInjection * 3.5 : 0;
         }
 
         // Add Gaussian noise
         if (noiseLevel > 0) {
-          const noise = (Math.random() + Math.random() - 1.0) * noiseLevel * 2;
+          const noise = nextGaussian() * noiseLevel;
           I += noise;
         }
 
@@ -349,7 +349,7 @@ export function NeuronSandboxView() {
           pctx.fillStyle = "#94a3b8";
           pctx.font = "9px monospace";
           pctx.fillText("v (mV)", pw - 35, ph / 2 - 5);
-          pctx.fillText("u (recovery)", pw / 2 + 5, 12);
+          pctx.fillText(modelType === "adex" ? "w (adaptation)" : "u (recovery)", pw / 2 + 5, 12);
         }
       }
 
@@ -442,7 +442,29 @@ export function NeuronSandboxView() {
               >
                 Standard LIF
               </button>
+              <button
+                onClick={() => setModelType("adex")}
+                className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all cursor-pointer ${
+                  modelType === "adex"
+                    ? "bg-cyan-500/20 border-cyan-500 text-cyan-300"
+                    : "bg-slate-950 border-slate-800 text-slate-400 hover:text-slate-200"
+                }`}
+              >
+                AdEx (Adaptive)
+              </button>
             </div>
+
+            {modelType === "adex" && (
+              <div className="space-y-3 pt-3 border-t border-slate-800">
+                <label className="block text-[11px] font-mono text-slate-400">AdEx parameters · capacitance {adexParams.c_m} pF · leak {adexParams.g_l} nS · adaptation τ {adexParams.tau_w} ms</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <label className="text-[10px] text-slate-400">Capacitance (pF)<input type="range" min="50" max="500" step="10" value={adexParams.c_m} onChange={e=>setAdexParams(p=>({...p,c_m:Number(e.target.value)}))} className="w-full"/></label>
+                  <label className="text-[10px] text-slate-400">Leak conductance (nS)<input type="range" min="1" max="30" step="1" value={adexParams.g_l} onChange={e=>setAdexParams(p=>({...p,g_l:Number(e.target.value)}))} className="w-full"/></label>
+                  <label className="text-[10px] text-slate-400">Slope factor ΔT (mV)<input type="range" min="0.5" max="5" step="0.1" value={adexParams.delta_t} onChange={e=>setAdexParams(p=>({...p,delta_t:Number(e.target.value)}))} className="w-full"/></label>
+                  <label className="text-[10px] text-slate-400">Adaptation τw (ms)<input type="range" min="20" max="300" step="5" value={adexParams.tau_w} onChange={e=>setAdexParams(p=>({...p,tau_w:Number(e.target.value)}))} className="w-full"/></label>
+                </div>
+              </div>
+            )}
 
             {/* Izhikevich Presets */}
             {modelType === "izhikevich" && (
@@ -499,7 +521,7 @@ export function NeuronSandboxView() {
 
               <div>
                 <div className="flex justify-between text-xs font-mono text-slate-300 mb-1">
-                  <span>Injected Current (I):</span>
+                  <span>Input drive (nA for LIF/AdEx; normalized for Izhikevich):</span>
                   <span className="text-cyan-400">{currentInjection.toFixed(1)}</span>
                 </div>
                 <input
@@ -515,7 +537,7 @@ export function NeuronSandboxView() {
 
               <div>
                 <div className="flex justify-between text-xs font-mono text-slate-300 mb-1">
-                  <span>Synaptic Noise (σ):</span>
+                  <span>Input noise (same units as drive):</span>
                   <span className="text-cyan-400">{noiseLevel.toFixed(1)}</span>
                 </div>
                 <input
