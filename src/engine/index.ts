@@ -9,6 +9,8 @@ export interface IzhikevichParameters { a:number; b:number; c:number; d:number; 
 export interface IzhikevichState { voltageMv:number; recovery:number; }
 const finite=(v:number,n:string)=>{if(!Number.isFinite(v))throw new Error(n+" must be finite");};
 const positive=(v:number,n:string)=>{finite(v,n);if(v<=0)throw new Error(n+" must be > 0");};
+function validateParameters(p:Record<string,number>){for(const [name,value] of Object.entries(p))finite(value,name);}
+const validIntegrator=(m:Integrator)=>{if(m!=="euler"&&m!=="rk4")throw new Error("integrator must be euler or rk4");};
 function validateStep(dt:number,current:number){positive(dt,"dtMs");finite(current,"currentPa");}
 function scalar(y:number,dt:number,f:(v:number)=>number,m:Integrator):number {
  if(m==="euler")return y+dt*f(y);
@@ -22,20 +24,20 @@ function pair(x:number,y:number,dt:number,f:(x:number,y:number)=>number,g:(x:num
  return [x+dt*(k1x+2*k2x+2*k3x+k4x)/6,y+dt*(k1y+2*k2y+2*k3y+k4y)/6];
 }
 export function stepLif(s:LifState,p:LifParameters,i:number,dt:number,m:Integrator="rk4"):StepResult<LifState>{
- validateStep(dt,i);positive(p.tauM,"tauM");positive(p.resistanceMOhm,"resistanceMOhm");if(p.refractoryMs<0)throw new Error("refractoryMs must be >= 0");
+ validateStep(dt,i);validateParameters(p);validIntegrator(m);positive(p.tauM,"tauM");positive(p.resistanceMOhm,"resistanceMOhm");if(p.refractoryMs<0)throw new Error("refractoryMs must be >= 0");
  if(s.refractoryRemainingMs>0)return {state:{voltageMv:p.resetMv,refractoryRemainingMs:Math.max(0,s.refractoryRemainingMs-dt)},spike:false};
  const v=scalar(s.voltageMv,dt,x=>(p.restMv-x+i*p.resistanceMOhm/1000)/p.tauM,m);
  return v>=p.thresholdMv?{state:{voltageMv:p.resetMv,refractoryRemainingMs:p.refractoryMs},spike:true}:{state:{voltageMv:v,refractoryRemainingMs:0},spike:false};
 }
 export function stepAdEx(s:AdExState,p:AdExParameters,i:number,dt:number,m:Integrator="rk4"):StepResult<AdExState>{
- validateStep(dt,i);positive(p.capacitancePf,"capacitancePf");positive(p.leakConductanceNs,"leakConductanceNs");positive(p.slopeFactorMv,"slopeFactorMv");positive(p.adaptationTauMs,"adaptationTauMs");
+ validateStep(dt,i);validateParameters(p);validIntegrator(m);positive(p.capacitancePf,"capacitancePf");positive(p.leakConductanceNs,"leakConductanceNs");positive(p.slopeFactorMv,"slopeFactorMv");positive(p.adaptationTauMs,"adaptationTauMs");
  const f=(v:number,w:number)=>(-p.leakConductanceNs*(v-p.leakReversalMv)+p.leakConductanceNs*p.slopeFactorMv*Math.exp(Math.min(50,(v-p.thresholdMv)/p.slopeFactorMv))-w+i)/p.capacitancePf;
  const g=(v:number,w:number)=>(p.adaptationA*(v-p.leakReversalMv)-w)/p.adaptationTauMs;
  const [v,w]=pair(s.voltageMv,s.adaptationPa,dt,f,g,m);
  return v>=p.spikeCutoffMv?{state:{voltageMv:p.resetMv,adaptationPa:w+p.adaptationBPa},spike:true}:{state:{voltageMv:v,adaptationPa:w},spike:false};
 }
 export function stepIzhikevich(s:IzhikevichState,p:IzhikevichParameters,inputDrive:number,dt:number,m:Integrator="rk4"):StepResult<IzhikevichState>{
- validateStep(dt,inputDrive);const f=(v:number,u:number)=>0.04*v*v+5*v+140-u+inputDrive,g=(v:number,u:number)=>p.a*(p.b*v-u);
+ validateStep(dt,inputDrive);validateParameters(p);validIntegrator(m);const f=(v:number,u:number)=>0.04*v*v+5*v+140-u+inputDrive,g=(v:number,u:number)=>p.a*(p.b*v-u);
  const [v,u]=pair(s.voltageMv,s.recovery,dt,f,g,m);
  return v>=p.spikeCutoffMv?{state:{voltageMv:p.c,recovery:u+p.d},spike:true}:{state:{voltageMv:v,recovery:u},spike:false};
 }
@@ -43,7 +45,7 @@ export interface StdpParameters { aPlus:number;aMinus:number;tauPlusMs:number;ta
 export interface StdpState { weight:number;preTrace:number;postTrace:number;lastTimeMs:number; }
 export function createStdpState(weight:number,timeMs=0):StdpState{finite(weight,"weight");finite(timeMs,"timeMs");return {weight,preTrace:0,postTrace:0,lastTimeMs:timeMs};}
 function decay(s:StdpState,p:StdpParameters,t:number):StdpState{
- finite(t,"timeMs");if(t<s.lastTimeMs)throw new Error("STDP events must be chronological");positive(p.tauPlusMs,"tauPlusMs");positive(p.tauMinusMs,"tauMinusMs");if(p.minWeight>p.maxWeight)throw new Error("minWeight must be <= maxWeight");
+ finite(t,"timeMs");if(t<s.lastTimeMs)throw new Error("STDP events must be chronological");positive(p.tauPlusMs,"tauPlusMs");positive(p.tauMinusMs,"tauMinusMs");finite(p.aPlus,"aPlus");finite(p.aMinus,"aMinus");finite(p.minWeight,"minWeight");finite(p.maxWeight,"maxWeight");if(p.minWeight>p.maxWeight)throw new Error("minWeight must be <= maxWeight");
  const d=t-s.lastTimeMs;return {...s,preTrace:s.preTrace*Math.exp(-d/p.tauPlusMs),postTrace:s.postTrace*Math.exp(-d/p.tauMinusMs),lastTimeMs:t};
 }
 export function stdpPre(s:StdpState,p:StdpParameters,t:number):StdpState{const d=decay(s,p,t);return {...d,weight:Math.max(p.minWeight,Math.min(p.maxWeight,d.weight-p.aMinus*d.postTrace)),preTrace:d.preTrace+1};}
