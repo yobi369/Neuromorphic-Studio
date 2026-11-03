@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { SnnNeuron, SnnSynapse } from "../types";
+import { HeterogeneousNetwork, seededRandom } from "../engine/network";
 import { spikeAudio } from "../utils/audioSynth";
 import {
   Network,
@@ -37,6 +38,9 @@ export function SnnNetworkView() {
   const animIdRef = useRef<number>(0);
   const lastSpikeCounterRef = useRef<number>(0);
   const lastRateTimeRef = useRef<number>(performance.now());
+  const networkRef = useRef<HeterogeneousNetwork | null>(null);
+  const stimulusRngRef = useRef<(() => number)>(seededRandom(20261104));
+  const accumulatorRef = useRef(0);
 
   // Initialize Network Topology
   const initTopology = () => {
@@ -48,6 +52,11 @@ export function SnnNetworkView() {
     const numOutput = 4;
 
     let idCounter = 0;
+    const rng = seededRandom(20261103);
+    const hiddenIds = Array.from({length:numHidden},(_,i)=>numInput+i);
+    const inhibitoryIds = new Set(hiddenIds.filter(()=>rng()<inhibitoryRatio/100));
+    stimulusRngRef.current = seededRandom(20261104);
+    accumulatorRef.current = 0;
 
     // 1. Input Layer
     for (let i = 0; i < numInput; i++) {
@@ -100,34 +109,32 @@ export function SnnNetworkView() {
     // Connect Input to Hidden
     for (let inp = 0; inp < numInput; inp++) {
       for (let hid = numInput; hid < numInput + numHidden; hid++) {
-        if (Math.random() < 0.45) {
+        if (rng() < 0.45) {
           synapses.push({
             fromId: inp,
             toId: hid,
-            weight: 0.8 + Math.random() * 0.8,
-            delayMs: 1 + Math.random() * 2,
+            weight: 0.8 + rng() * 0.8,
+            delayMs: 1 + rng() * 2,
             lastActive: -999,
           });
         }
       }
     }
 
-    // Hidden Recurrent Connections (Reservoir / Dale's Law)
-    if (topologyType === "recurrent_reservoir" || topologyType === "ring_attractor") {
-      for (let h1 = numInput; h1 < numInput + numHidden; h1++) {
-        for (let h2 = numInput; h2 < numInput + numHidden; h2++) {
-          if (h1 !== h2 && Math.random() < 0.28) {
-            const isInhibitory = Math.random() < inhibitoryRatio / 100;
-            const w = isInhibitory ? -(0.9 + Math.random() * 1.2) : (0.6 + Math.random() * 0.8);
-            synapses.push({
-              fromId: h1,
-              toId: h2,
-              weight: w,
-              delayMs: 1 + Math.random() * 3,
-              lastActive: -999,
-            });
-          }
+    // Recurrent topology: source-neuron identity fixes outgoing sign (Dale's law).
+    if (topologyType === "recurrent_reservoir") {
+      for (const from of hiddenIds) for (const to of hiddenIds) {
+        if (from !== to && rng() < 0.28) {
+          const inhibitory = inhibitoryIds.has(from);
+          const weight = inhibitory ? -(0.9 + rng()*1.2) : (0.6 + rng()*0.8);
+          synapses.push({fromId:from,toId:to,weight,delayMs:1+rng()*3,lastActive:-999});
         }
+      }
+    } else if (topologyType === "ring_attractor") {
+      for (let i=0;i<hiddenIds.length;i++) for (const offset of [1,2]) {
+        const from=hiddenIds[i],to=hiddenIds[(i+offset)%hiddenIds.length],inhibitory=inhibitoryIds.has(from);
+        const weight=inhibitory?-(0.9+rng()*1.2):(0.6+rng()*0.8);
+        synapses.push({fromId:from,toId:to,weight,delayMs:1+rng()*2,lastActive:-999});
       }
     }
 
@@ -148,6 +155,9 @@ export function SnnNetworkView() {
 
     neuronsRef.current = neurons;
     synapsesRef.current = synapses;
+    const engineNeurons = neurons.map(n=>({id:n.id,model:"lif" as const,state:{voltageMv:-70,refractoryRemainingMs:0},parameters:{tauM:n.layer==="input"?10:20,resistanceMOhm:100,restMv:-70,resetMv:-65,thresholdMv:-50,refractoryMs:2}}));
+    const engineConnections = synapses.map((syn,index)=>({id:"syn-"+index,from:syn.fromId,to:syn.toId,weight:syn.weight*1000*synapticWeightScale,delayMs:syn.delayMs}));
+    networkRef.current = new HeterogeneousNetwork(engineNeurons,engineConnections);
     rasterDataRef.current = [];
     setTotalNetworkSpikes(0);
     setSynapticOpsCount(0);
@@ -155,7 +165,7 @@ export function SnnNetworkView() {
 
   useEffect(() => {
     initTopology();
-  }, [topologyType, inhibitoryRatio]);
+  }, [topologyType, inhibitoryRatio, synapticWeightScale]);
 
   // Main SNN Simulation Loop
   useEffect(() => {
