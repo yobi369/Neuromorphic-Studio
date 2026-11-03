@@ -58,7 +58,7 @@ A green build or simulator test is not proof of independent scientific reproduct
 ## Security and product boundaries
 
 - Registration/login uses scrypt password hashes and HttpOnly SameSite session cookies. Project and experiment queries are scoped to the authenticated user.
-- AI requests require a valid session and use database-backed quotas (8/minute, 60/day), prompt/context size limits, output limits and provider timeout configuration.
+- AI requests require a valid session and use database-backed quotas (4/minute, 20/day), prompt/context size limits, output limits and provider timeout configuration.
 - Account recovery, email verification, MFA, organization roles, audit log export and independent penetration testing remain incomplete.
 - Billing, checkout, trial activation and license verification are disabled.
 - Hardware bridge reports no connected devices unless a real adapter is integrated. No telemetry is fabricated.
