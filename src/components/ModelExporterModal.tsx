@@ -204,7 +204,7 @@ export function ModelExporterModal({
           </button>
         </div>
 
-        {viewMode === "wasm_sandbox" ? (
+        {viewMode === "reference_simulator" ? (
           <div className="p-6 max-h-[70vh] overflow-y-auto">
             <MicrocodeSandbox
               initialCode={generatedCode}
@@ -283,7 +283,7 @@ export function ModelExporterModal({
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setViewMode("wasm_sandbox")}
+              onClick={() => setViewMode("reference_simulator")}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-950/80 hover:bg-cyan-900/90 text-cyan-300 border border-cyan-500/50 transition-colors text-xs font-sans font-medium cursor-pointer"
             >
               <Play className="w-3.5 h-3.5 text-cyan-400" />
