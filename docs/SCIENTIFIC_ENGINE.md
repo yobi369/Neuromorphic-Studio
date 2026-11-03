@@ -42,3 +42,4 @@ The optional Tonic 1.6.0 adapter exports N-MNIST, IBM DVS Gesture and SHD train/
 ## Regression and validation
 
 Run npm test, npm run typecheck and npm run build. Separate workflows run Brian2 reference comparison, Lava/snnTorch/C exporter smoke tests and Tonic dataset-adapter import checks. Passing software checks does not establish physical hardware validity or independent scientific reproduction.
+\n## Event-stream filtering\n\nThe DVS view exports canonical event CSV and calls the deterministic 8-neighbour background-activity filter. An event is retained only when at least one neighbouring pixel has fired within the configured time window. The filter processes actual supplied events and returns retained/rejected counts, polarity ratios, measured processing time and filtered CSV. It is not a binary AEDAT decoder, and the live DVS UI submits a bounded sample of generated/video-derived events rather than a complete sensor capture.\n
