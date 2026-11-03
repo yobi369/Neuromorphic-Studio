@@ -11,7 +11,7 @@ neuron = nest.Create("iaf_psc_alpha", params={
     "tau_syn_ex": 2.0, "tau_syn_in": 2.0, "I_e": 0.0,
 })
 meter = nest.Create("multimeter", params={"record_from": ["V_m"], "interval": 0.01})
-nest.Connect(meter, neuron)
+nest.Connect(neuron, meter)
 nest.Simulate(1.0)
 events = meter.get("events")
 if len(events["V_m"]) == 0:
