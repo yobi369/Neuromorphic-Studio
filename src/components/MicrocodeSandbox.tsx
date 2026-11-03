@@ -9,7 +9,8 @@ interface SimulationResult {
 }
 const PRESETS={
  cpp_micro:"/* Portable C99 LIF kernel preview.\n * This editor is not compiled or executed by the reference simulator.\n * The separately generated exporter artifact has its own GCC CI smoke test.\n */\n#include <stdint.h>\n#define NUM_NEURONS 8\n#define V_THRESHOLD_Q8 256\ntypedef struct { int16_t voltage[NUM_NEURONS]; } lif_state;\nvoid lif_step(lif_state *state,const int16_t current_q8[NUM_NEURONS]);",
- loihi2_lava:"# Lava process-graph preview.\n# The separate exporter workflow executes a generated Lava graph in the\n# Lava floating-point simulator. This text preview is not executed here.\nfrom lava.proc.lif.process import LIF\nlayer = LIF(shape=(8,), du=0, dv=0.1, vth=100)",\n snntorch_pytorch:"import torch\nimport snntorch as snn\n\n# LIF module preview; initialized parameters, not trained weights.\nclass LIFNetwork(torch.nn.Module):\n    def __init__(self):\n        super().__init__()\n        self.lif = snn.Leaky(beta=0.9)\n\n    def forward(self, x):\n        return self.lif(x)"
+ loihi2_lava:"# Lava process-graph preview.\n# The separate exporter workflow executes a generated Lava graph in the\n# Lava floating-point simulator. This text preview is not executed here.\nfrom lava.proc.lif.process import LIF\nlayer = LIF(shape=(8,), du=0, dv=0.1, vth=100)",
+ snntorch_pytorch:"import torch\nimport snntorch as snn\n\n# LIF module preview; initialized parameters, not trained weights.\nclass LIFNetwork(torch.nn.Module):\n    def __init__(self):\n        super().__init__()\n        self.lif = snn.Leaky(beta=0.9)\n\n    def forward(self, x):\n        return self.lif(x)"
 };
 export function MicrocodeSandbox({onClose,initialCode,initialTarget="cpp_micro"}:MicrocodeSandboxProps){
  const [target,setTarget]=useState<"cpp_micro"|"loihi2_lava"|"snntorch_pytorch">(initialTarget);
