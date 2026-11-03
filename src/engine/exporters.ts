@@ -1,5 +1,5 @@
 export type ExportTarget="lava"|"snntorch"|"embedded-c";
-export interface ExportConfig {name:string;inputSize:number;hiddenSize:number;outputSize:number;tauMs:number;dtMs:number;threshold:number;weights?:number[][];bias?:number[];}
+export interface ExportConfig {target?:ExportTarget;name:string;inputSize:number;hiddenSize:number;outputSize:number;tauMs:number;dtMs:number;threshold:number;weights?:number[][];bias?:number[];}
 export interface ExportArtifact {target:ExportTarget;filename:string;language:"python"|"c";code:string;compatibility:"template-generated-not-sdk-certified";assumptions:string[];}
 const safeName=(name:string)=>{const n=name.replace(/[^a-zA-Z0-9_]/g,"");if(!n||!/^[a-zA-Z_]/.test(n))throw new Error("Model name must produce a valid identifier");return n;};
 export function validateExportConfig(c:ExportConfig){
