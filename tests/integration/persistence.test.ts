@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import express from "express";
 import supertest from "supertest";
 import {initializePersistence,registerInfrastructureRoutes,closePersistence,consumeAiQuota} from "../../server/persistence.ts";
-let agentA:ReturnType<typeof supertest.agent>,agentB:ReturnType<typeof supertest.agent>,testApp:express.Express;
+let agentA:any,agentB:any,testApp:express.Express;
 let projectId="",experimentId="";
 before(async()=>{
  if(!process.env.DATABASE_URL)throw new Error("DATABASE_URL is required for persistence integration tests");
