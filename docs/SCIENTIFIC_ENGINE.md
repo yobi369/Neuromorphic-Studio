@@ -2,38 +2,43 @@
 
 ## Scope and conventions
 
-The first deterministic core provides independently callable LIF, adaptive exponential integrate-and-fire (AdEx), and Izhikevich steps; Euler and classical RK4 integration; pair-based all-to-all exponential STDP; a fixed-step event-driven LIF network with delayed synaptic deliveries; and spike-train summary statistics.
+The deterministic core provides independently callable LIF, adaptive exponential integrate-and-fire (AdEx), and Izhikevich steps; Euler and classical RK4 integration; pair-based exponential STDP; a trace-based triplet STDP rule; fixed-step LIF and heterogeneous LIF/AdEx/Izhikevich networks; deterministic topology builders; delayed synaptic events; spike-train statistics; raster binning; event CSV validation; benchmark metrics; and constrained exporter generators.
 
-Units are explicit in identifiers: time ms, voltage mV, current pA, resistance MOhm, capacitance pF, conductance nS. No hidden random-number generator or wall-clock dependency is used.
+Time is milliseconds and voltage is mV. LIF/AdEx inputs use pA, LIF resistance uses MOhm, AdEx capacitance pF and conductance nS. Izhikevich uses the canonical normalized model drive in its quadratic equation; its input is not pA. Heterogeneous network connection weights are interpreted in the target neuron's input convention.
 
 ## Numerical methods and limitations
 
-RK4 integrates the continuous subthreshold differential equations over each caller-supplied fixed step. Threshold crossings are detected at the end of a step and reset there; this is not an event-time root solver. Reduce dtMs and run a convergence study for high precision. AdEx exponentials are capped at exponent 50 to avoid overflow; this is a numerical guard, not a biological saturation mechanism. Izhikevich uses the canonical quadratic voltage and recovery equations with threshold/reset.
+RK4 integrates continuous subthreshold equations over fixed caller-supplied steps. Threshold crossings are detected at step end and reset there; this is not event-time root finding. Reduce dt and compare against a reference. AdEx exponentials are capped at exponent 50 to avoid overflow. Izhikevich uses the canonical quadratic voltage and recovery equations with threshold/reset.
 
-The LIF current convention is I[pA] * R[MOhm] / 1000 in mV. AdEx uses pA/pF and nS*mV = pA. Izhikevich follows the conventional normalized-current equation; callers must document the current scaling used in each experiment.
+The LIF current convention is I[pA] * R[MOhm] / 1000 in mV. AdEx uses pA/pF and nS*mV = pA. Izhikevich uses normalized input drive; do not pass a value measured in pA without an explicit model-specific conversion.
 
-## STDP convention
+## STDP conventions
 
-A presynaptic event depresses by A_minus times the decayed postsynaptic trace; a postsynaptic event potentiates by A_plus times the decayed presynaptic trace. Traces decay exponentially with their respective time constants, and weights are clamped to configured bounds. Events must be chronological. Nonzero-delay plasticity requires careful distinction between axonal emission and synaptic arrival; the current network implementation is an initial reference semantics, not a claim of equivalence to Brian2 or NEST.
+Pair STDP maintains exponentially decaying pre/post traces. A pre-arrival event depresses by A_minus times the decayed post trace; a post spike potentiates by A_plus times the decayed pre trace. Weights are clamped to configured bounds.
+
+Triplet STDP adds slow pre and post traces. The pre event includes the A3-minus triplet term and the post event includes the A3-plus term. Amplitudes and time constants must be fitted or declared; they are not universal constants. Events must be chronological. Network plasticity updates at presynaptic arrival, and post traces update at postsynaptic spike time.
 
 ## Network semantics
 
-The network advances LIF neurons in fixed time steps, queues synaptic current events at emission time plus delay, and delivers queued events during the first step whose end reaches the arrival. Delays are therefore quantized by the integration step. This is a reproducible reference engine, not yet a high-performance sparse event scheduler.
+The original EventDrivenNetwork is a fixed-step LIF network. The HeterogeneousNetwork supports LIF, AdEx and Izhikevich neurons, deterministic all-to-all/ring/probability topology builders, and delay-boundary splitting: integration intervals are shortened to land on the next queued synaptic arrival. The arriving event is applied at the start of the next integration interval. It is still a fixed-step numerical integrator, not an asynchronous continuous-time event solver. Simultaneous events are processed in stable sequence order.
 
-## Regression tests
+## Reference comparison
 
-Run npm test. Tests cover a passive-membrane analytical comparison, threshold/refractory behavior, AdEx and Izhikevich reset behavior, causal/anti-causal STDP sign, clipping, delayed propagation, and spike-train statistics. Passing tests establishes software regression evidence only; it does not establish peer-reviewed simulator equivalence or physical hardware validity.
+A pinned Brian2 2.9.0 workflow generates one-step state fixtures for LIF, AdEx and Izhikevich with matching RK4 step sizes and compares the TypeScript engine against those fixtures. The CI workflow pins NumPy below 2 due Brian2 compatibility. This checks selected subthreshold trajectories; it is not a complete validation of all firing regimes, synaptic dynamics or network behavior. NEST comparison and independent external reproduction remain open.
 
-## Validation still required
+## Benchmark and dataset adapters
 
-- Compare each model against pinned Brian2 reference scripts with identical units, integrator, time step, initial state, and threshold/reset convention.
-- Add dt-halving convergence curves and spike-time error bounds.
-- Cross-check STDP curves against an independent analytical implementation, including nonzero delays and simultaneous events.
-- Compare network raster and weight traces against Brian2 or NEST fixtures.
-- Have an independent researcher reproduce versioned experiments from committed parameter manifests and input hashes.
+The benchmark module computes confusion matrix, accuracy, macro-F1, supplied mean latency, class-stratified bootstrap intervals and paired exact McNemar comparisons. Candidate/baseline sample IDs and labels must match exactly.
 
-## Benchmark evaluation primitives
+The optional Tonic 1.6.0 adapter exports N-MNIST, IBM DVS Gesture and SHD train/test splits to canonical event CSV with source, license declaration, loader version, preprocessing, SHA-256 and split-ID hash. The API can verify canonical CSV bytes and split IDs for smaller uploads. The dataset adapter does not itself train a model or establish a published leaderboard result.
 
-The benchmark module currently ingests a strict, unquoted CSV table containing sample_id, actual, predicted, and optional latency_ms. It computes a confusion matrix, accuracy, macro-F1, and mean supplied latency. A seeded percentile bootstrap reports a reproducible accuracy interval; the seed and resample count are returned with the result. Candidate/baseline summaries can be compared when both summaries use the same sample count.
+## Hardware export boundary
 
-This is an evaluation primitive, not a dataset loader for raw N-MNIST, DVS Gesture, or SHD event files. It does not yet establish official train/validation/test splits, class-balanced bootstrap intervals, paired per-sample baseline significance tests, energy measurement, or dataset licensing/provenance. Never label an uploaded arbitrary prediction CSV as an official benchmark result. Record dataset version, split hash, preprocessing, model configuration, software versions, hardware and random seeds in the experiment manifest before making comparative claims.
+- Lava export is a generated process graph executed against Lava's floating-point simulator in CI. It is not a physical Loihi 2 build.
+- snnTorch export is a generated LIF module executed on CPU with pinned PyTorch/snnTorch. It does not transfer learned weights from the Studio model.
+- Embedded export is a portable fixed-point C99 LIF kernel compiled with GCC. It does not include a board HAL, full synaptic matrix, sensor I/O or firmware image.
+- Akida, SpiNNaker 2 and Speck have no verified exporter.
+
+## Regression and validation
+
+Run npm test, npm run typecheck and npm run build. Separate workflows run Brian2 reference comparison, Lava/snnTorch/C exporter smoke tests and Tonic dataset-adapter import checks. Passing software checks does not establish physical hardware validity or independent scientific reproduction.
