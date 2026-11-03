@@ -264,27 +264,15 @@ export function StdpLabView() {
 
   // Pavlov Experiment Action
   const triggerPavlovTrial = (type: "bell_only" | "pair_bell_food" | "food_only") => {
-    if (type === "pair_bell_food") {
-      // Bell fires 10ms before Food -> STDP strengthens Bell synapse!
-      const dt = 10;
-      const dw = calculateDeltaW(dt) * 2.0; // Accelerated demonstration
-      const newBellW = Math.min(1.0, bellWeight + dw);
-      setBellWeight(Number(newBellW.toFixed(3)));
-      setPavlovTrials((prev) => prev + 1);
-      setConditionedResponseFired(true);
-      spikeAudio.playSpike(0.9, 1.3);
-    } else if (type === "bell_only") {
-      // If Bell synapse strong enough (>0.6), trigger salivation
-      if (bellWeight >= 0.55) {
-        setConditionedResponseFired(true);
-        spikeAudio.playSpike(0.8, 1.2);
-      } else {
-        setConditionedResponseFired(false);
-      }
-    } else if (type === "food_only") {
-      setConditionedResponseFired(true);
-      spikeAudio.playSpike(0.7, 1.0);
-    }
+    const p=engineParams(),t=bellClockRef.current;let next=bellStateRef.current;
+    if(type==="pair_bell_food"){next=stdpPre(next,p,t);next=stdpPost(next,p,t+10);setPavlovTrials(v=>v+1);}
+    else if(type==="bell_only")next=stdpPre(next,p,t);
+    else next=stdpPost(next,p,t);
+    bellStateRef.current=next;bellClockRef.current=t+20;
+    setBellWeight(Number(next.weight.toFixed(3)));
+    const conditioned=type==="food_only"||(type==="bell_only"&&next.weight>=0.55);
+    setConditionedResponseFired(conditioned);
+    if(conditioned)spikeAudio.playSpike(0.8,1.1);
   };
 
   return (
