@@ -73,7 +73,7 @@ Install Tonic 1.6.0 in an isolated Python environment, then use validation/offic
 
 ## Remaining independent evidence
 
-- NEST cross-checks and broader Brian2 network/STDP reference traces.
+- Broader NEST neuron/network and Brian2 network/STDP reference traces beyond the currently configured LIF and pair-STDP fixtures.
 - External researcher reproduction from a frozen manifest.
 - Full official dataset holdout experiments, multiple seeds and baseline result archives.
 - Physical Loihi 2 / Akida / SpiNNaker 2 / Speck / MCU board builds, timing, power and I/O validation.
