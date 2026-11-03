@@ -170,13 +170,13 @@ async function startServer() {
     const timesteps=Number(req.body?.timesteps??100);
     const neuronCount=Number(req.body?.neuronCount??8);
     const seed=Number(req.body?.seed??20261103);
-    const code=req.body?.code;
+    const codePreviewProvided=req.body?.codePreviewProvided===true;
     if(!["cpp_micro","loihi2_lava","snntorch_pytorch"].includes(target))return res.status(400).json({error:"Unsupported requested export target label."});
     if(!["poisson","burst","dvs_sweep"].includes(pattern))return res.status(400).json({error:"Unsupported inputSpikePattern."});
     if(!Number.isInteger(timesteps)||timesteps<10||timesteps>1000||!Number.isInteger(neuronCount)||neuronCount<4||neuronCount>32)
       return res.status(400).json({error:"timesteps must be 10–1000 and neuronCount 4–32."});
     if(!Number.isInteger(seed)||seed<0)return res.status(400).json({error:"seed must be a non-negative integer."});
-    if(code!==undefined&&(typeof code!=="string"||code.length>32_000))return res.status(400).json({error:"Code preview must be a string no larger than 32 KB."});
+
     let quota:"ok"|"minute"|"day";
     try{quota=await consumeEvaluationQuota(String(res.locals.userId));}catch{return res.status(503).json({error:"Simulation quota storage unavailable."});}
     if(quota==="minute")return res.status(429).json({error:"Reference simulation rate limit reached."});
@@ -206,7 +206,7 @@ async function startServer() {
     const softwareElapsedMs=Number((performance.now()-started).toFixed(3));
     return res.json({
       success:true,simulator:"Neuromorphic Studio deterministic TypeScript LIF reference engine",
-      requestedTarget:target,codePreviewProvided:typeof code==="string"&&code.length>0,codeExecuted:false,hardwareMetrics:null,
+      requestedTarget:target,codePreviewProvided,codeExecuted:false,hardwareMetrics:null,
       inputSpikePattern:pattern,seed,dtMs:1,timesteps,neuronCount,inputEventCount,activeSpikeCount:spikeCount,
       synapticEventsScheduled,softwareElapsedMs,membraneUnits:"mV",inputCurrentUnits:"pA",
       neurons:traces,logs:[
