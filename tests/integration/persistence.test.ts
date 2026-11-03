@@ -16,7 +16,7 @@ test("PostgreSQL auth, project ownership and experiment isolation",async()=>{
  const a=await agentA.post("/api/auth/register").send({email:"owner-a@example.test",password:"a-very-long-test-password-123",name:"Owner A"});
  const b=await agentB.post("/api/auth/register").send({email:"owner-b@example.test",password:"another-long-test-password-456",name:"Owner B"});
  assert.equal(a.status,201);assert.equal(b.status,201);
- for(let i=0;i<8;i++)assert.equal(await consumeAiQuota(a.body.user.id),"ok");
+ for(let i=0;i<4;i++)assert.equal(await consumeAiQuota(a.body.user.id),"ok");
  assert.equal(await consumeAiQuota(a.body.user.id),"minute");
  const created=await agentA.post("/api/projects").send({name:"Private project",config:{layers:[8,4]}});
  assert.equal(created.status,201);projectId=created.body.project.id;
