@@ -1,0 +1,6 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import {parseLabeledCsv,evaluatePredictions,bootstrapAccuracy,compareToBaseline} from "../src/engine/benchmark.ts";
+test("CSV ingestion validates rows and numeric latency",()=>{const rows=parseLabeledCsv("sample_id,actual,predicted,latency_ms\na,cat,cat,2\nb,dog,cat,4");assert.equal(rows.length,2);assert.throws(()=>parseLabeledCsv("sample_id,actual,predicted\na,cat"),/columns/);});
+test("evaluation produces confusion matrix, accuracy and macro F1",()=>{const m=evaluatePredictions([{sampleId:"1",actual:"a",predicted:"a",latencyMs:2},{sampleId:"2",actual:"b",predicted:"a",latencyMs:4}]);assert.equal(m.accuracy,.5);assert.equal(m.meanLatencyMs,3);assert.deepEqual(m.confusionMatrix,[[1,0],[1,0]]);assert.ok(m.macroF1>0&&m.macroF1<1);});
+test("bootstrap interval is deterministic and baseline comparison is paired by sample count",()=>{const rows=[{sampleId:"1",actual:"a",predicted:"a"},{sampleId:"2",actual:"b",predicted:"a"},{sampleId:"3",actual:"b",predicted:"b"}];const a=bootstrapAccuracy(rows,500,.95,42),b=bootstrapAccuracy(rows,500,.95,42);assert.deepEqual(a,b);const m=evaluatePredictions(rows);assert.equal(compareToBaseline(m,m).accuracyDelta,0);});
