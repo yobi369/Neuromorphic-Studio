@@ -32,6 +32,7 @@ export async function initializePersistence():Promise<boolean>{
  CREATE INDEX IF NOT EXISTS projects_user_updated_idx ON projects(user_id,updated_at DESC);
  CREATE TABLE IF NOT EXISTS experiments(id uuid PRIMARY KEY,user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,project_id uuid REFERENCES projects(id) ON DELETE SET NULL,name text NOT NULL,manifest jsonb NOT NULL,result jsonb,created_at timestamptz NOT NULL DEFAULT now());
  CREATE INDEX IF NOT EXISTS experiments_user_created_idx ON experiments(user_id,created_at DESC);
+ CREATE TABLE IF NOT EXISTS ai_usage(user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,window_type text NOT NULL,window_start timestamptz NOT NULL,requests integer NOT NULL DEFAULT 0,PRIMARY KEY(user_id,window_type,window_start));
  `);
  return true;
 }
@@ -78,4 +79,17 @@ export function registerInfrastructureRoutes(app:Express){
  });
  app.get("/api/experiments/:id",requireAuthenticatedUser,async(req,res)=>{const r=await pool!.query("SELECT id,project_id,name,manifest,result,created_at FROM experiments WHERE id=$1 AND user_id=$2",[req.params.id,res.locals.userId]);if(!r.rowCount)return res.status(404).json({error:"Experiment not found."});res.json({experiment:r.rows[0]});});
  app.get("/api/infrastructure/status",(_req,res)=>res.json({databaseConfigured:Boolean(pool),authentication:"database-backed-session",projectIsolation:"user-scoped",experimentHistory:Boolean(pool)}));
+}
+
+export async function consumeAiQuota(userId:string):Promise<"ok"|"minute"|"day">{
+ if(!pool)throw new Error("Database not configured");
+ const client=await pool.connect();
+ try{
+  await client.query("BEGIN");
+  const minute=await client.query("INSERT INTO ai_usage(user_id,window_type,window_start,requests) VALUES($1,'minute',date_trunc('minute',now()),1) ON CONFLICT(user_id,window_type,window_start) DO UPDATE SET requests=ai_usage.requests+1 WHERE ai_usage.requests<8 RETURNING requests",[userId]);
+  if(!minute.rowCount){await client.query("ROLLBACK");return "minute";}
+  const day=await client.query("INSERT INTO ai_usage(user_id,window_type,window_start,requests) VALUES($1,'day',date_trunc('day',now()),1) ON CONFLICT(user_id,window_type,window_start) DO UPDATE SET requests=ai_usage.requests+1 WHERE ai_usage.requests<60 RETURNING requests",[userId]);
+  if(!day.rowCount){await client.query("ROLLBACK");return "day";}
+  await client.query("COMMIT");return "ok";
+ }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
 }
