@@ -57,7 +57,8 @@ def main():
  manifest={
   "name":name,"version":"upstream release via Tonic 1.6.0","source":source,"license":args.license,
   "sha256":sha256(out),"split":args.split,"splitHash":split_hash(ids),
-  "preprocessing":"Tonic upstream loader; stable timestamp sort; polarity mapped to -1/+1; no denoising, cropping or temporal binning",
+  "preprocessing":"Tonic upstream loader; stable timestamp sort; polarity mapped to -1/+1; no additional denoising, cropping or temporal binning",
+  "adapterNote":"Tonic DVSGesture is a preprocessed dataset variant: original multi-label recordings are segmented into samples and timestamp precision is reduced to milliseconds. Tonic timestamps are represented in microseconds; do not infer finer precision than the upstream data provides." if args.dataset=="dvs_gesture" else "No additional dataset-specific transform is applied by this exporter.",
   "seed":args.seed,"sampleCount":len(ids),"eventCount":event_count,
   "sensor":{"width":width,"height":height},"loader":{"library":"tonic","version":tonic.__version__},
   "subset":args.max_samples>0
