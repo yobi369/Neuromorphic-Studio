@@ -6,6 +6,9 @@ import dotenv from "dotenv";
 import { initializePersistence, registerInfrastructureRoutes } from "./server/persistence";
 import { exportModel } from "./src/engine/exporters";
 import { parseLabeledCsv, evaluatePredictions, bootstrapAccuracy } from "./src/engine/benchmark";
+import { initializePersistence, registerInfrastructureRoutes } from "./server/persistence";
+import { exportModel } from "./src/engine/exporters";
+import { parseLabeledCsv, evaluatePredictions, bootstrapAccuracy } from "./src/engine/benchmark";
 
 dotenv.config();
 
