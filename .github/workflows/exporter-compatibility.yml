@@ -1,0 +1,27 @@
+name: Hardware exporter compatibility
+on:
+  push:
+    branches: [main, "product/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  exporter-compatibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: sudo apt-get update && sudo apt-get install -y gcc
+      - run: python -m pip install --disable-pip-version-check lava-nc==0.10.0
+      - run: python -m pip install --disable-pip-version-check torch==2.6.0 snntorch==1.0.0
+      - run: npm install --no-audit --no-fund
+      - run: npx tsx scripts/generate-export-fixtures.ts
+      - run: python validation/verify_exporters.py
