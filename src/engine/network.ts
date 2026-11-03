@@ -1,10 +1,10 @@
 import { stepLif, stepAdEx, stepIzhikevich, LifParameters, LifState, AdExParameters, AdExState, IzhikevichParameters, IzhikevichState, Integrator, StdpParameters, StdpState, createStdpState, stdpPre, stdpPost } from "./index.ts";
 import { TripletStdpParameters, TripletStdpState, createTripletStdpState, tripletStdpPre, tripletStdpPost } from "./triplet-stdp.ts";
 export type NeuronSpec =
- | {id:number;model:"lif";parameters:LifParameters;state:LifState;biasPa?:number}
+ | {id:number;model:"lif";parameters:LifParameters;state:LifState;biasInput?:number}
  | {id:number;model:"adex";parameters:AdExParameters;state:AdExState;biasPa?:number}
  | {id:number;model:"izhikevich";parameters:IzhikevichParameters;state:IzhikevichState;biasPa?:number};
-export interface Connection {id:string;from:number;to:number;weightPa:number;delayMs:number;plasticity?:StdpParameters;tripletPlasticity?:TripletStdpParameters;stdpState?:StdpState;tripletState?:TripletStdpState;}
+export interface Connection {id:string;from:number;to:number;weight:number;delayMs:number;plasticity?:StdpParameters;tripletPlasticity?:TripletStdpParameters;stdpState?:StdpState;tripletState?:TripletStdpState;}
 export interface TimedSpike {neuronId:number;timeMs:number;}
 interface Event {at:number;target:number;current:number;connectionId:string;sequence:number;}
 export interface TopologyEdge {from:number;to:number;}
@@ -15,16 +15,16 @@ export function probabilityTopology(source:number[],target:number[],probability:
 export class HeterogeneousNetwork {
  private neurons=new Map<number,NeuronSpec>();private connections:Connection[];private queue:Event[]=[];private sequence=0;private clock=0;readonly spikes:TimedSpike[]=[];
  constructor(neurons:NeuronSpec[],connections:Connection[]){for(const n of neurons){if(this.neurons.has(n.id))throw new Error("duplicate neuron id");this.neurons.set(n.id,structuredClone(n));}
-  const ids=new Set<string>();for(const c of connections){if(ids.has(c.id))throw new Error("duplicate connection id");ids.add(c.id);if(!this.neurons.has(c.from)||!this.neurons.has(c.to))throw new Error("connection references missing neuron");if(c.delayMs<0||!Number.isFinite(c.delayMs)||!Number.isFinite(c.weightPa))throw new Error("invalid connection weight/delay");}
-  this.connections=connections.map(c=>{if(c.plasticity&&c.tripletPlasticity)throw new Error("select pair or triplet STDP, not both");return {...c,stdpState:c.plasticity?(c.stdpState||createStdpState(c.weightPa)):undefined,tripletState:c.tripletPlasticity?(c.tripletState||createTripletStdpState(c.weightPa)):undefined};});
+  const ids=new Set<string>();for(const c of connections){if(ids.has(c.id))throw new Error("duplicate connection id");ids.add(c.id);if(!this.neurons.has(c.from)||!this.neurons.has(c.to))throw new Error("connection references missing neuron");if(c.delayMs<0||!Number.isFinite(c.delayMs)||!Number.isFinite(c.weight))throw new Error("invalid connection weight/delay");}
+  this.connections=connections.map(c=>{if(c.plasticity&&c.tripletPlasticity)throw new Error("select pair or triplet STDP, not both");return {...c,stdpState:c.plasticity?(c.stdpState||createStdpState(c.weight)):undefined,tripletState:c.tripletPlasticity?(c.tripletState||createTripletStdpState(c.weight)):undefined};});
  }
  get timeMs(){return this.clock;}
- get weights(){return this.connections.map(c=>({id:c.id,weightPa:c.weightPa}));}
+ get weights(){return this.connections.map(c=>({id:c.id,weight:c.weight}));}
  private integrate(h:number,external:ReadonlyMap<number,number>,method:Integrator):TimedSpike[]{
   const now=this.clock,due=this.queue.filter(e=>e.at<=now+1e-10).sort((a,b)=>a.at-b.at||a.sequence-b.sequence);this.queue=this.queue.filter(e=>e.at>now+1e-10);
-  const currents=new Map<number,number>();for(const e of due){const c=this.connections.find(x=>x.id===e.connectionId);if(c?.plasticity&&c.stdpState){c.stdpState=stdpPre(c.stdpState,c.plasticity,e.at);c.weightPa=c.stdpState.weight;}if(c?.tripletPlasticity&&c.tripletState){c.tripletState=tripletStdpPre(c.tripletState,c.tripletPlasticity,e.at);c.weightPa=c.tripletState.weight;}currents.set(e.target,(currents.get(e.target)||0)+e.current);}for(const [id,v] of external)currents.set(id,(currents.get(id)||0)+v);
+  const currents=new Map<number,number>();for(const e of due){const c=this.connections.find(x=>x.id===e.connectionId);if(c?.plasticity&&c.stdpState){c.stdpState=stdpPre(c.stdpState,c.plasticity,e.at);c.weight=c.stdpState.weight;}if(c?.tripletPlasticity&&c.tripletState){c.tripletState=tripletStdpPre(c.tripletState,c.tripletPlasticity,e.at);c.weight=c.tripletState.weight;}currents.set(e.target,(currents.get(e.target)||0)+e.current);}for(const [id,v] of external)currents.set(id,(currents.get(id)||0)+v);
   const fired:TimedSpike[]=[];
-  for(const n of this.neurons.values()){const input=(n.biasPa||0)+(currents.get(n.id)||0);let spike=false;
+  for(const n of this.neurons.values()){const input=(n.biasInput||0)+(currents.get(n.id)||0);let spike=false;
    if(n.model==="lif"){const r=stepLif(n.state,n.parameters,input,h,method);n.state=r.state;spike=r.spike;}
    else if(n.model==="adex"){const r=stepAdEx(n.state,n.parameters,input,h,method);n.state=r.state;spike=r.spike;}
    else {const r=stepIzhikevich(n.state,n.parameters,input,h,method);n.state=r.state;spike=r.spike;}
@@ -32,7 +32,7 @@ export class HeterogeneousNetwork {
   }
   for(const spike of fired){
    this.spikes.push(spike);
-   for(const c of this.connections)if(c.from===spike.neuronId)this.queue.push({at:spike.timeMs+c.delayMs,target:c.to,current:c.weightPa,connectionId:c.id,sequence:this.sequence++});
+   for(const c of this.connections)if(c.from===spike.neuronId)this.queue.push({at:spike.timeMs+c.delayMs,target:c.to,current:c.weight,connectionId:c.id,sequence:this.sequence++});
    for(const c of this.connections)if(c.to===spike.neuronId){
     if(c.plasticity&&c.stdpState){c.stdpState=stdpPost(c.stdpState,c.plasticity,spike.timeMs);c.weightPa=c.stdpState.weight;}
     if(c.tripletPlasticity&&c.tripletState){c.tripletState=tripletStdpPost(c.tripletState,c.tripletPlasticity,spike.timeMs);c.weightPa=c.tripletState.weight;}
