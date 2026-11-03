@@ -1,11 +1,13 @@
 import express, { Request, Response } from "express";
 import path from "path";
+import { createHash } from "node:crypto";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import { initializePersistence, registerInfrastructureRoutes } from "./server/persistence";
 import { exportModel } from "./src/engine/exporters";
-import { parseLabeledCsv, evaluatePredictions, bootstrapAccuracy } from "./src/engine/benchmark";
+import { parseLabeledCsv, evaluatePredictions, bootstrapAccuracyStratified, comparePredictionsPaired } from "./src/engine/benchmark";
+import { parseEventCsv, validateDatasetManifest, assertNoSplitLeakage } from "./src/engine/dataset";
 import { initializePersistence, registerInfrastructureRoutes } from "./server/persistence";
 import { exportModel } from "./src/engine/exporters";
 import { parseLabeledCsv, evaluatePredictions, bootstrapAccuracy } from "./src/engine/benchmark";
@@ -88,14 +90,43 @@ async function startServer() {
     error: "No official dataset runner is configured. Upload predictions from a documented evaluation run to /api/benchmarks/evaluate.",
     code: "DATASET_RUNNER_NOT_IMPLEMENTED",
   }));
+  app.post("/api/datasets/validate-events", (req: Request, res: Response) => {
+    const csv = req.body?.csv, width = Number(req.body?.width), height = Number(req.body?.height), manifest = req.body?.manifest;
+    if (typeof csv !== "string" || csv.length > 180_000) return res.status(400).json({ error: "Event CSV must be supplied as a string no larger than 180 KB." });
+    try {
+      const events = parseEventCsv(csv, width, height);
+      const leakage = assertNoSplitLeakage(events);
+      const sourceHash = createHash("sha256").update(csv).digest("hex");
+      const sampleIds = [...new Set(events.filter(e => e.split === manifest?.split).map(e => e.sampleId))].sort();
+      const splitHash = createHash("sha256").update(sampleIds.join("\\n")).digest("hex");
+      const checked = validateDatasetManifest(manifest, events);
+      if (manifest.sha256.toLowerCase() !== sourceHash) return res.status(422).json({ error: "Dataset source SHA-256 does not match uploaded CSV bytes." });
+      if (manifest.splitHash.toLowerCase() !== splitHash) return res.status(422).json({ error: "Split SHA-256 does not match sorted sample IDs in the selected split." });
+      return res.json({ ...checked, contentHashVerified: true, splitHashVerified: true, leakage, sourceSha256: sourceHash, splitSha256: splitHash });
+    } catch (err: any) { return res.status(400).json({ error: err?.message || "Dataset validation failed." }); }
+  });
   app.post("/api/benchmarks/evaluate", (req: Request, res: Response) => {
-    const csv = req.body?.csv;
-    if (typeof csv !== "string" || csv.length > 5_000_000) return res.status(400).json({ error: "csv must be a string no larger than 5 MB." });
+    const csv = req.body?.csv, manifest = req.body?.manifest;
+    if (typeof csv !== "string" || csv.length > 180_000) return res.status(400).json({ error: "Prediction CSV must be a string no larger than 180 KB." });
+    const sha = (v: unknown) => typeof v === "string" && /^[a-f0-9]{64}$/i.test(v);
+    if (!manifest || typeof manifest !== "object" || !manifest.datasetName || !manifest.datasetVersion ||
+        !sha(manifest.datasetSha256) || !["validation", "test"].includes(manifest.split) ||
+        !manifest.preprocessing || !Number.isInteger(manifest.seed) || !sha(manifest.modelSha256) || !sha(manifest.codeCommit))
+      return res.status(400).json({ error: "A complete reproducibility manifest is required: dataset name/version/hash, validation or test split, preprocessing, seed, model hash and code commit." });
     try {
       const rows = parseLabeledCsv(csv);
       const metrics = evaluatePredictions(rows);
-      const interval = bootstrapAccuracy(rows, 2000, 0.95, Number.isInteger(req.body?.seed) ? req.body.seed : 20261103);
-      return res.json({ metrics, accuracyInterval: interval, provenance: { input: "user-supplied-labeled-predictions", datasetVerified: false, splitVerified: false } });
+      const interval = bootstrapAccuracyStratified(rows, 2000, 0.95, manifest.seed);
+      let baseline = null;
+      if (req.body?.baselineCsv !== undefined) {
+        if (typeof req.body.baselineCsv !== "string" || req.body.baselineCsv.length > 180_000) return res.status(400).json({ error: "baselineCsv must be a string no larger than 180 KB." });
+        baseline = comparePredictionsPaired(rows, parseLabeledCsv(req.body.baselineCsv));
+      }
+      return res.json({ metrics, accuracyInterval: interval, pairedBaseline: baseline, provenance: {
+        ...manifest, predictionArtifactSha256: createHash("sha256").update(csv).digest("hex"),
+        sourceDatasetHashDeclared: true, sourceDatasetHashVerified: false,
+        warning: "Dataset hash is declared but not independently verified by this endpoint. Validate the original event artifact with /api/datasets/validate-events before reporting verified provenance."
+      }});
     } catch (err: any) { return res.status(400).json({ error: err?.message || "Invalid benchmark input." }); }
   });
 
