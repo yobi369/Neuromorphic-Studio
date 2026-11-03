@@ -109,7 +109,7 @@ async function startServer() {
     const sha = (v: unknown) => typeof v === "string" && /^[a-f0-9]{64}$/i.test(v);
     if (!manifest || typeof manifest !== "object" || !manifest.datasetName || !manifest.datasetVersion ||
         !sha(manifest.datasetSha256) || !["validation", "test"].includes(manifest.split) ||
-        !manifest.preprocessing || !Number.isInteger(manifest.seed) || !sha(manifest.modelSha256) || !sha(manifest.codeCommit))
+        !manifest.preprocessing || !Number.isInteger(manifest.seed) || !sha(manifest.modelSha256) || !(typeof manifest.codeCommit === "string" && /^[a-f0-9]{40}([a-f0-9]{24})?$/i.test(manifest.codeCommit)) || manifest.seed < 0)
       return res.status(400).json({ error: "A complete reproducibility manifest is required: dataset name/version/hash, validation or test split, preprocessing, seed, model hash and code commit." });
     try {
       const rows = parseLabeledCsv(csv);
