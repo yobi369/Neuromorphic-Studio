@@ -249,8 +249,6 @@ export function DvsEncoderView() {
                 sampleEvents.push({ t: nowMicros, x, y, p: 1 });
               }
               if(frameEvents.length<1000)frameEvents.push({t:nowMicros,x,y,p:1});
-              if(false){
-              }
             } else {
               // OFF Event: Red/Orange
               dvsCtx.fillStyle = "#ff0055";
