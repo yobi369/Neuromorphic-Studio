@@ -10,6 +10,7 @@ const positive=(v:number,n:string)=>{finite(v,n);if(v<=0)throw new Error(n+" mus
 function advance(s:TripletStdpState,p:TripletStdpParameters,t:number):TripletStdpState {
  finite(t,"timeMs");if(t<s.lastTimeMs)throw new Error("Triplet STDP events must be chronological");
  positive(p.tauPlusMs,"tauPlusMs");positive(p.tauMinusMs,"tauMinusMs");positive(p.tauXSlowMs,"tauXSlowMs");positive(p.tauYSlowMs,"tauYSlowMs");
+ for(const [name,value] of Object.entries({aPlus:p.aPlus,aMinus:p.aMinus,a3Plus:p.a3Plus,a3Minus:p.a3Minus,minWeight:p.minWeight,maxWeight:p.maxWeight}))finite(value,name);
  if(p.minWeight>p.maxWeight)throw new Error("minWeight must be <= maxWeight");
  const dt=t-s.lastTimeMs;
  return {...s,xPreFast:s.xPreFast*Math.exp(-dt/p.tauPlusMs),xPreSlow:s.xPreSlow*Math.exp(-dt/p.tauXSlowMs),yPostFast:s.yPostFast*Math.exp(-dt/p.tauMinusMs),yPostSlow:s.yPostSlow*Math.exp(-dt/p.tauYSlowMs),lastTimeMs:t};
