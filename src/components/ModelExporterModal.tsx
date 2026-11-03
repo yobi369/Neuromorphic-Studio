@@ -34,7 +34,7 @@ export function ModelExporterModal({
   const [modelName, setModelName] = useState("EdgeVision_SNN");
   const [layerConfig, setLayerConfig] = useState("64, 32, 10");
   const [tauM, setTauM] = useState(20.0);
-  const [viewMode, setViewMode] = useState<"export" | "wasm_sandbox">("export");
+  const [viewMode, setViewMode] = useState<"export" | "reference_simulator">("export");
   const [generatedCode, setGeneratedCode] = useState("");
   const [filename, setFilename] = useState("");
   const [loading, setLoading] = useState(false);
@@ -51,38 +51,38 @@ export function ModelExporterModal({
   }[] = [
     {
       id: "lava_python",
-      name: "Intel Loihi 2 (Lava SDK)",
+      name: "Lava SDK process-graph template",
       ext: ".py",
-      runtime: "Python 3.10+ / Lava Magma",
-      description: "Direct Loihi 2 execution script with LIF processes, fixed-point weights, and event ports.",
-      badge: "Loihi 2 Certified",
-      requiresTier: "pro",
+      runtime: "Lava 0.10 floating-point simulator",
+      description: "Simulator-tested process graph. Physical Loihi board deployment and hardware measurements are not verified.",
+      badge: "Simulator smoke-tested",
+      requiresTier: "community",
     },
     {
       id: "snntorch_pytorch",
-      name: "snnTorch (PyTorch / CUDA)",
+      name: "snnTorch LIF module",
       ext: ".py",
-      runtime: "PyTorch 2.x + snnTorch",
-      description: "Full PyTorch nn.Module with Leaky Integrate-and-Fire layers and FastSigmoid surrogate gradients.",
-      badge: "GPU Accelerated",
+      runtime: "PyTorch 2.6 CPU + snnTorch 1.0",
+      description: "CPU-smoke-tested LIF module. Exported parameters are initial values, not trained model weights.",
+      badge: "CPU smoke-tested",
       requiresTier: "community",
     },
     {
       id: "cpp_micro",
-      name: "Embedded C++ (ARM Cortex-M)",
-      ext: ".cpp",
-      runtime: "Bare-Metal C++17 / FreeRTOS",
-      description: "Q8.8 fixed-point deterministic SNN engine for STM32, RP2040, and Nordic microcontrollers under 4KB RAM.",
-      badge: "< 4KB Memory",
-      requiresTier: "pro",
+      name: "Portable embedded C99 LIF kernel",
+      ext: ".c",
+      runtime: "GCC C99 host compilation",
+      description: "Fixed-point LIF kernel template. No MCU HAL, firmware image, board timing or RAM certification is included.",
+      badge: "GCC smoke-tested",
+      requiresTier: "community",
     },
     {
       id: "onnx_spiking",
-      name: "ONNX-Spiking Topology",
+      name: "Topology JSON schema preview",
       ext: ".json",
-      runtime: "ONNX Runtime SNN / Edge Engine",
-      description: "Standardized graph schema for sparse neuromorphic hardware compilers and simulators.",
-      badge: "Open Standard",
+      runtime: "JSON manifest only",
+      description: "Topology metadata preview, not an ONNX model, executable graph or hardware compiler input.",
+      badge: "Schema only",
       requiresTier: "community",
     },
   ];
@@ -126,8 +126,7 @@ export function ModelExporterModal({
   if (!isOpen) return null;
 
   const currentTargetObj = targets.find((t) => t.id === selectedTarget)!;
-  const isLocked =
-    currentTargetObj.requiresTier === "pro" && tier === "community";
+  const isLocked = false;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedCode);
@@ -162,11 +161,11 @@ export function ModelExporterModal({
                   Neuromorphic Model &amp; Code Exporter
                 </h2>
                 <span className="px-2 py-0.5 rounded text-[11px] font-mono uppercase bg-emerald-950 border border-emerald-500/40 text-emerald-300">
-                  Hardware Ready
+                  Software templates
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Synthesize production deployment code for Intel Loihi 2, snnTorch, and embedded microcontrollers
+                Generate starter artifacts. Physical hardware compilation and target-board validation remain separate release gates.
               </p>
             </div>
           </div>
@@ -193,15 +192,15 @@ export function ModelExporterModal({
             <span>Code Synthesis &amp; Export</span>
           </button>
           <button
-            onClick={() => setViewMode("wasm_sandbox")}
+            onClick={() => setViewMode("reference_simulator")}
             className={`flex items-center gap-2 px-4 py-2 text-xs font-semibold rounded-t-lg transition-all cursor-pointer ${
-              viewMode === "wasm_sandbox"
+              viewMode === "reference_simulator"
                 ? "bg-slate-900 border-t-2 border-cyan-400 text-cyan-300 shadow-sm"
                 : "text-slate-400 hover:text-slate-200"
             }`}
           >
             <Play className="w-4 h-4 text-cyan-400" />
-            <span>Virtual WASM Microcode Execution Core</span>
+            <span>Software Reference Simulation</span>
           </button>
         </div>
 
@@ -225,7 +224,7 @@ export function ModelExporterModal({
           {targets.map((target) => {
             const isSelected = selectedTarget === target.id;
             const requiresUpgrade =
-              target.requiresTier === "pro" && tier === "community";
+              false;
 
             return (
               <button
@@ -288,7 +287,7 @@ export function ModelExporterModal({
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-950/80 hover:bg-cyan-900/90 text-cyan-300 border border-cyan-500/50 transition-colors text-xs font-sans font-medium cursor-pointer"
             >
               <Play className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Test in WASM Core</span>
+              <span>Run reference simulation</span>
             </button>
 
             <button
@@ -334,8 +333,7 @@ export function ModelExporterModal({
                 {currentTargetObj.name} Export is a Pro Feature
               </h4>
               <p className="text-xs text-slate-400 max-w-md">
-                Deploying directly to physical Intel Loihi 2 neuromorphic hardware and bare-metal ARM microcontrollers
-                requires a Pro Researcher or Enterprise Lab license.
+                This artifact is a starter template. It does not include a physical hardware deployment, firmware image, certified memory budget or device measurements.
               </p>
               <button
                 onClick={() => {
@@ -344,7 +342,7 @@ export function ModelExporterModal({
                 }}
                 className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20"
               >
-                Upgrade to Pro Researcher ($49/mo)
+                Unavailable
               </button>
             </div>
           )}
@@ -366,7 +364,7 @@ export function ModelExporterModal({
         <div className="bg-slate-950 px-6 py-4 border-t border-slate-900 flex items-center justify-between text-xs text-slate-400">
           <div className="flex items-center gap-2">
             <Terminal className="w-4 h-4 text-cyan-400" />
-            <span>Target Runtime: {currentTargetObj.runtime}</span>
+            <span>Template runtime: {currentTargetObj.runtime}</span>
           </div>
           <button
             onClick={onClose}
