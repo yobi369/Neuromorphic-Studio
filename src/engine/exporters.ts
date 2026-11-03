@@ -35,6 +35,7 @@ class ${name}(nn.Module):
         return torch.stack(spikes), mem2
 
 if __name__ == "__main__":
+    torch.manual_seed(20261103)
     model = ${name}()
     example = torch.zeros(10, 2, ${c.inputSize})
     out, final_membrane = model(example)
@@ -91,7 +92,8 @@ uint32_t ${name}_step(${name}_state *s, const int16_t current_q8[HIDDEN]) {
  for (size_t i=0;i<HIDDEN;i++) {
    int32_t v=((int32_t)s->v[i]*DECAY_Q8)/Q + current_q8[i];
    if (v>=THRESHOLD_Q8) { s->spikes |= ((uint32_t)1u<<i); v=0; }
-   if (v>INT16_MAX) { v=INT16_MAX; }\n   if (v<INT16_MIN) { v=INT16_MIN; }
+   if (v>INT16_MAX) { v=INT16_MAX; }
+   if (v<INT16_MIN) { v=INT16_MIN; }
    s->v[i]=(int16_t)v;
  }
  return s->spikes;
