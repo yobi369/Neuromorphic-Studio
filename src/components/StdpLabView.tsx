@@ -187,27 +187,21 @@ export function StdpLabView() {
     ctx.fillText("ΔW (Weight Delta)", w / 2 + 8, 15);
   }, [params, deltaT, manualDeltaW]);
 
-  // Continuous Correlated Train Loop
+  // Correlated spike pairs update the same trace-based STDP engine used by regression tests.
   useEffect(() => {
     if (experimentMode !== "correlated_train" || !isSimulating) return;
-
     const interval = setInterval(() => {
-      // Simulate pairs with causal correlation bias (pre fires 12ms before post)
-      const noise = (Math.random() - 0.5) * 16;
-      const sampledDt = 12 + noise; // Mean +12ms
-      const dw = calculateDeltaW(sampledDt);
-
-      setCurrentWeight((prev) => {
-        const next = Math.max(params.w_min, Math.min(params.w_max, prev + dw));
-        setWeightHistory((hist) => [...hist.slice(-120), next]);
-        return Number(next.toFixed(4));
-      });
-
-      spikeAudio.playSpike(0.4, 1.1);
-    }, 120);
-
-    return () => clearInterval(interval);
-  }, [experimentMode, isSimulating, params]);
+      const p=engineParams(),dt=12+(nextRandom()-0.5)*16,t=stdpClockRef.current;
+      let next=stdpStateRef.current;
+      if(dt>=0){next=stdpPre(next,p,t);next=stdpPost(next,p,t+dt);}
+      else{next=stdpPost(next,p,t);next=stdpPre(next,p,t+Math.abs(dt));}
+      stdpStateRef.current=next;stdpClockRef.current=t+Math.abs(dt)+20;
+      setCurrentWeight(Number(next.weight.toFixed(4)));
+      setWeightHistory(hist=>[...hist.slice(-120),next.weight]);
+      spikeAudio.playSpike(0.4,1.1);
+    },120);
+    return ()=>clearInterval(interval);
+  },[experimentMode,isSimulating,params]);
 
   // Draw Weight Evolution History
   useEffect(() => {
