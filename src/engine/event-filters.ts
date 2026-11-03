@@ -1,3 +1,4 @@
+import type {EventRecord} from "./dataset";
 export interface EventFilterResult {retained:EventRecord[];rejected:EventRecord[];}
 /** Background activity filter: retain an event only when an 8-neighbour pixel fired within the time window. */
 export function filterBackgroundActivity(events:EventRecord[],timeWindowUs:number,width:number,height:number):EventFilterResult{
