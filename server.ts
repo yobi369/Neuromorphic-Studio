@@ -49,11 +49,8 @@ async function startServer() {
 
   // Guarded server-side research assistant. This endpoint is advisory, not a compiler.
   const aiRate = new Map<string, { count: number; resetAt: number }>();
+  const aiDaily = new Map<string, { count: number; resetAt: number }>();
   app.post("/api/neuromorphic-ai", requireAuthenticatedUser, async (req: Request, res: Response) => {
-    const ip = String(res.locals.userId || req.ip || "unknown"), now = Date.now(), usage = aiRate.get(ip);
-    if (!usage || usage.resetAt < now) aiRate.set(ip, { count: 1, resetAt: now + 60_000 });
-    else if (usage.count >= 8) return res.status(429).json({ error: "AI request limit reached. Try again in one minute." });
-    else usage.count++;
     const prompt = req.body?.prompt;
     const taskType = req.body?.taskType;
     const context = req.body?.context ?? {};
@@ -64,6 +61,14 @@ async function startServer() {
     const allowedTasks = ["architecture_design", "debugging", "model_explanation", "code_review", "experiment_design"];
     if (taskType !== undefined && !allowedTasks.includes(taskType))
       return res.status(400).json({ error: "Unsupported taskType." });
+    const ip = String(res.locals.userId || req.ip || "unknown"), now = Date.now();
+    const minute = aiRate.get(ip), day = aiDaily.get(ip);
+    if (minute && minute.resetAt > now && minute.count >= 8)
+      return res.status(429).json({ error: "AI request limit reached. Try again in one minute." });
+    if (day && day.resetAt > now && day.count >= 60)
+      return res.status(429).json({ error: "Daily AI request allowance reached." });
+    aiRate.set(ip, !minute || minute.resetAt <= now ? { count: 1, resetAt: now + 60_000 } : { ...minute, count: minute.count + 1 });
+    aiDaily.set(ip, !day || day.resetAt <= now ? { count: 1, resetAt: now + 86_400_000 } : { ...day, count: day.count + 1 });
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) return res.status(503).json({ error: "AI provider is not configured.", code: "AI_NOT_CONFIGURED" });
     try {
