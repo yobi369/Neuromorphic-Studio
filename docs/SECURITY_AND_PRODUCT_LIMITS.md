@@ -1,26 +1,37 @@
 # Security and product limits
 
-## Current safeguards
+## Implemented safeguards
 
-- Express JSON request bodies are capped at 256 KiB.
-- The server disables the `X-Powered-By` header.
-- Responses include baseline content-type, framing, referrer, permissions and resource-policy headers.
-- Billing endpoints return HTTP 503 with `BILLING_NOT_CONFIGURED`; the existing mock handlers are intentionally unreachable.
-- The default browser profile is a generic community researcher rather than a fabricated named scientist or paid customer.
+- Express JSON body limit: 256 KiB.
+- Baseline security headers and disabled X-Powered-By.
+- Billing/licensing endpoints fail closed with HTTP 503.
+- PostgreSQL-backed registration/login with scrypt password hashes and random session tokens stored as SHA-256 digests.
+- HttpOnly, SameSite=Strict session cookies; Secure flag in production; origin checks for state-changing requests.
+- Per-user project and experiment access enforced in SQL predicates.
+- Database-backed AI quotas: 8 requests/minute and 60/day per account.
+- AI prompt limit 6,000 characters, context JSON limit 4 KiB, output cap 4,096 tokens / 24,000 returned characters, and provider HTTP timeout configuration.
+- Hardware endpoints return unavailable rather than presenting mock devices or telemetry.
+- Benchmark API accepts supplied prediction artifacts and records declared provenance; dataset hashes can be checked against canonical event CSV bytes.
 
-## Known gaps — do not deploy as a multi-user production service
+## Required deployment configuration
 
-1. **Authentication and authorization:** no verified identity/session middleware or per-user authorization.
-2. **Persistence and isolation:** project data is in process memory; all callers share the same process-level collection.
-3. **AI endpoint:** requires strict prompt/context validation, rate limiting, provider timeout, output limits, abuse monitoring and cost controls before public exposure.
-4. **CORS and CSP:** no deployment-specific allowlist or Content Security Policy has been established.
-5. **Rate limiting:** no distributed request throttling or abuse protection is implemented.
-6. **Secrets:** production secret storage, rotation and access policy remain deployment responsibilities.
-7. **Billing:** no payment provider, verified webhook, reconciliation or genuine license service exists.
-8. **Auditability:** no durable audit events or tamper-evident experiment history.
-9. **Supply chain:** dependency lockfile and automated dependency update policy still need to be added and reviewed.
-10. **Hardware access:** no browser-to-device bridge should be considered secure or production-ready without a threat model and device-specific authorization.
+- Configure DATABASE_URL to a private PostgreSQL endpoint with TLS where required.
+- Set PGSSLMODE=require only when appropriate for the provider.
+- Store GEMINI_API_KEY in the host's secret manager, never in VITE_ variables.
+- Restrict network access to PostgreSQL, configure provider backups and retention, and test restoration before storing important work.
+- Terminate TLS at the trusted host and validate forwarded-header configuration.
+
+## Remaining security gaps
+
+1. **Identity lifecycle:** email verification, password reset, MFA, session revocation UI, suspicious-login detection and account deletion are not implemented.
+2. **Authorization roles:** account-level isolation exists; organization/workspace roles, sharing and delegated access are not implemented.
+3. **Abuse controls:** authentication and AI quotas use database state for per-user windows; broader IP/network abuse controls, provider budget enforcement and anomaly monitoring need deployment review.
+4. **AI cancellation:** provider timeout is configured, but request cancellation and provider-side spend reconciliation need validation against the installed SDK/runtime.
+5. **Browser policy:** a deployment-specific CSP and explicit CORS allowlist have not been configured.
+6. **Data lifecycle:** backup/restore drills, retention, export/delete workflows, audit log and immutable provenance storage are not complete.
+7. **Supply chain:** a committed npm lockfile, pinned GitHub Action SHAs and automated dependency review remain release gates.
+8. **Hardware security:** no device control channel is active; any future bridge needs device identity, authorization, replay protection and a threat model.
 
 ## Release gates
 
-Do not enable public user accounts, sensitive research storage, payments, license issuance, or physical hardware control until the relevant gaps above are closed and tested. Keep secrets out of browser bundles and logs. Use synthetic data in demonstrations.
+Do not describe the service as production-ready until database backups have been restored in a drill, account lifecycle/security review is complete, the lockfile and action pinning are complete, and the relevant scientific/hardware validation evidence exists. Billing and physical hardware control remain disabled.
