@@ -2,69 +2,60 @@
 
 ## Current status
 
-The repository contains UI work areas for DVS encoding, LIF/AdEx/Izhikevich neuron models, SNN networks, STDP, hardware profiling, benchmarking and robotics control. Repository presence or UI output does **not** establish that these implementations reproduce accepted scientific models. No independent validation evidence is currently documented here.
+The repository now has automated deterministic neuron regression tests, selected Brian2 reference fixtures, analytical pair/triplet STDP tests, delayed heterogeneous network tests, benchmark metric tests and software exporter smoke tests. These are implementation checks, not an independent scientific reproduction.
 
-## Validation requirements by subsystem
-
-### Event-camera / DVS encoding
-- Define the input representation, timestamp unit, polarity convention and coordinate bounds.
-- Test ordering, duplicate timestamps, simultaneous events, empty streams and invalid coordinates.
-- Compare encoders against published datasets or a trusted event-camera toolkit.
-- Report event loss, latency, throughput and temporal distortion.
+## Evidence by subsystem
 
 ### Neuron dynamics
-- Publish each differential equation, parameter units, reset behavior and refractory semantics.
-- State integration scheme and timestep; test convergence as timestep decreases.
-- Compare voltage traces, spike times, firing-rate curves and response regimes against Brian2 or another pinned reference implementation.
-- Include analytic cases where available and test pathological parameter combinations.
+- Implemented LIF, AdEx and Izhikevich equations with Euler/RK4 fixed-step integration.
+- Analytical passive-membrane LIF test and timestep-convergence regression.
+- Brian2 2.9.0 subthreshold state comparison for all three models in CI.
+- Still needed: spiking-regime trace/raster comparisons, parameter-regime sweeps, dt-halving error curves and NEST cross-check.
 
 ### Synaptic plasticity
-- Specify pair-based or triplet rule, trace convention, update ordering, weight bounds and units.
-- Test pre-before-post and post-before-pre timing windows, zero lag, boundary clipping and repeated events.
-- Compare the full STDP learning window against a reference and test conservation/stability assumptions.
+- Pair exponential STDP with pre/post traces, chronological ordering and weight bounds.
+- Triplet trace rule with slow traces and A3 terms.
+- Hand-computed pair and triplet timing-window regression tests.
+- Heterogeneous network applies plasticity at delayed pre-arrival and post-spike times.
+- Still needed: independent Brian2/NEST STDP curve fixtures, simultaneous-event conventions, nonzero-delay protocol studies and fitted parameter sensitivity.
 
 ### Network simulation
-- Define connectivity generation, delay handling, event scheduling, synaptic current semantics and deterministic ordering.
-- Test single-neuron, two-neuron, feed-forward and recurrent reference networks.
-- Record seed, topology, parameter manifest and simulator revision for every run.
+- LIF fixed-step network and heterogeneous LIF/AdEx/Izhikevich engine.
+- Deterministic all-to-all, ring and seeded probability topology.
+- Delay-boundary splitting, raster binning and spike-train summaries.
+- Still needed: recurrent benchmark fixtures, large sparse networks, conductance synapses, event-time root finding, stochastic inputs and full reference raster/weight-trace comparison.
 
-### Hardware and energy profiling
-- Separate analytical estimates, vendor-published specifications, simulator estimates and physical measurements.
-- Cite the source and revision for every vendor figure.
-- Do not label energy-per-operation or latency as measured unless captured on the named hardware with a documented instrument and protocol.
-- Report idle baseline, workload, sampling interval, repetitions, variance and thermal/power conditions.
+### Datasets and benchmarks
+- Tonic 1.6.0 adapters for N-MNIST, IBM DVS Gesture and SHD train/test.
+- Canonical event CSV export with SHA-256, split hash, counts, loader version and explicit license declaration.
+- Prediction evaluation with accuracy, macro-F1, confusion matrix, stratified bootstrap interval and paired exact McNemar test.
+- Still needed: full dataset downloads/acceptance runs, frozen split artifacts, official published baseline reproductions, multi-seed training and class-wise confidence intervals.
 
-### Benchmarks
-- Pin dataset version and checksum, preprocessing, split and class mapping.
-- Prevent train/test leakage; document model selection and hyperparameter tuning.
-- Report accuracy plus per-class precision/recall, confusion matrix, latency distribution and energy methodology.
-- Include confidence intervals and compare against a conventional baseline and a suitable SNN baseline.
+### Hardware
+- Lava floating-point simulator scaffold executed in CI.
+- snnTorch LIF scaffold executed on CPU in CI.
+- Portable fixed-point C99 kernel compiled with GCC in CI.
+- Still needed: physical Loihi 2 compilation/board execution, Akida/SpiNNaker 2/Speck exporters, MCU board port, I/O/timing/power measurements and vendor SDK version matrix.
 
-### Robotics and control
-- State plant dynamics, units, controller, observation delay and actuator constraints.
-- Compare with a conventional control baseline.
-- Test perturbations, sensor noise, latency, actuator saturation and failure recovery in simulation before any physical deployment.
+### Product infrastructure
+- PostgreSQL schema for users, sessions, projects, experiment records and AI quotas.
+- scrypt password hashing, HttpOnly session cookies and user-scoped project/experiment queries.
+- Still needed: deployed DATABASE_URL, backup/restore drill, email verification, account recovery, MFA, organization roles, sharing, audit export and penetration testing.
+
+### Secure AI
+- Authenticated AI endpoint, strict task/prompt/context limits, persistent per-user minute/day quotas, token/output cap and provider timeout setting.
+- Still needed: cancellation verification, provider spend reconciliation, abuse monitoring, retention policy and independent security review.
 
 ## Required experiment record
 
-Each reproducible result should capture:
-- experiment ID and UTC timestamp;
-- Git commit and simulator version;
-- model equations, units and parameter values;
-- dataset/source and cryptographic hash;
-- random seed and runtime environment;
-- numerical method and timestep;
-- hardware/firmware details where relevant;
-- raw trace/artifact location;
-- metrics, uncertainty and baseline;
-- reviewer and validation status.
+Each result should include exact Git commit, dataset/archive SHA-256, split sample-ID hash, license/source, preprocessing, model artifact hash, parameters, random seed, integrator/time step, framework versions, hardware/firmware, raw outputs and uncertainty.
 
 ## Status vocabulary
 
-- **Implemented:** code exists and has local tests.
-- **Reference-checked:** output agrees with a named, version-pinned reference within a stated tolerance.
-- **Dataset-validated:** evaluated on a named, versioned holdout with reproducible protocol.
+- **Implemented:** code exists with regression tests.
+- **Reference-checked:** agrees with a named, version-pinned reference within a stated tolerance.
+- **Dataset-validated:** evaluated on a named, versioned holdout with a frozen reproducible protocol.
 - **Hardware-measured:** measured on named physical hardware using a documented procedure.
-- **Independently reproduced:** a separate operator reproduced the result from the recorded manifest.
+- **Independently reproduced:** a separate operator reproduced the result from the frozen manifest.
 
-Do not advance a subsystem's status without retaining the evidence.
+Do not promote a subsystem to a stronger status without retaining the evidence.
