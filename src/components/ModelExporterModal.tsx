@@ -200,7 +200,7 @@ export function ModelExporterModal({
                   ? "cpp_micro"
                   : selectedTarget === "lava_python"
                   ? "loihi2_lava"
-                  : "cpp_micro"
+                  : "snntorch_pytorch"
               }
             />
           </div>
