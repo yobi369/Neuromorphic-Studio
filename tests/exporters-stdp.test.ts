@@ -1,6 +1,10 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {createTripletStdpState,tripletStdpPre,tripletStdpPost} from "../src/engine/triplet-stdp.ts";
+import {createStdpState,stdpPre,stdpPost} from "../src/engine/index.ts";
 import {exportModel} from "../src/engine/exporters.ts";
 test("triplet STDP gives pair-based LTP/LTD and validates event ordering",()=>{const p={aPlus:.01,aMinus:.012,tauPlusMs:20,tauMinusMs:20,a3Plus:.005,a3Minus:.004,tauXSlowMs:100,tauYSlowMs:100,minWeight:0,maxWeight:1};let s=tripletStdpPre(createTripletStdpState(.5),p,0);s=tripletStdpPost(s,p,10);assert.ok(s.weight>.5);let d=tripletStdpPost(createTripletStdpState(.5),p,0);d=tripletStdpPre(d,p,10);assert.ok(d.weight<.5);assert.throws(()=>tripletStdpPre(s,p,0),/chronological/);});
 test("exporters validate topology and disclose compatibility limits",()=>{const c={name:"Model_1",inputSize:8,hiddenSize:16,outputSize:4,tauMs:20,dtMs:1,threshold:1};for(const target of ["lava","snntorch","embedded-c"] as const){const artifact=exportModel(target,c);assert.ok(artifact.code.length>100);assert.equal(artifact.compatibility,"template-generated-not-sdk-certified");}assert.throws(()=>exportModel("embedded-c",{...c,hiddenSize:64}),/32 hidden/);});
+
+test("pair STDP matches analytical exponential window magnitude",()=>{const p={aPlus:.08,aMinus:.12,tauPlusMs:20,tauMinusMs:30,minWeight:0,maxWeight:1};let s=stdpPre(createStdpState(.5),p,0);s=stdpPost(s,p,10);assert.ok(Math.abs(s.weight-(.5+.08*Math.exp(-10/20)))<1e-12);let d=stdpPost(createStdpState(.5),p,0);d=stdpPre(d,p,10);assert.ok(Math.abs(d.weight-(.5-.12*Math.exp(-10/30)))<1e-12);});
+test("triplet STDP matches a hand-computed post-pre-post triplet",()=>{const p={aPlus:.08,aMinus:.12,tauPlusMs:20,tauMinusMs:20,minWeight:0,maxWeight:1,a3Plus:.03,a3Minus:.02,tauXSlowMs:100,tauYSlowMs:100};let s=tripletStdpPost(createTripletStdpState(.5),p,0);s=tripletStdpPre(s,p,5);s=tripletStdpPost(s,p,10);const expected=.5+.08*Math.exp(-5/20)+.03*Math.exp(-5/20)*Math.exp(-10/100);assert.ok(Math.abs(s.weight-expected)<1e-12);});
