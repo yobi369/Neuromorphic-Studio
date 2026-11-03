@@ -344,6 +344,14 @@ export function HardwareProfilerView() {
           </div>
         </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 rounded-xl border border-amber-700/30 bg-amber-950/10 p-4">
+          <label className="text-xs text-slate-300">Assumed energy per SOP (pJ)<input type="number" min="0" step="any" value={energyPerSopInput} onChange={(e)=>setEnergyPerSopInput(Number(e.target.value))} className="mt-1 w-full rounded bg-slate-950 border border-slate-700 p-2"/></label>
+          <label className="text-xs text-slate-300">Assumed idle power (mW)<input type="number" min="0" step="any" value={idlePowerInputMw} onChange={(e)=>setIdlePowerInputMw(Number(e.target.value))} className="mt-1 w-full rounded bg-slate-950 border border-slate-700 p-2"/></label>
+          <label className="text-xs text-slate-300">Comparison baseline (mW)<input type="number" min="0" step="any" value={gpuBaselineInputMw} onChange={(e)=>setGpuBaselineInputMw(Number(e.target.value))} className="mt-1 w-full rounded bg-slate-950 border border-slate-700 p-2"/></label>
+          <label className="text-xs text-slate-300">Battery capacity (mWh)<input type="number" min="0" step="any" value={batteryCapacityInputMwh} onChange={(e)=>setBatteryCapacityInputMwh(Number(e.target.value))} className="mt-1 w-full rounded bg-slate-950 border border-slate-700 p-2"/></label>
+          <p className="sm:col-span-2 lg:col-span-4 text-[10px] text-amber-300">These four values must come from your own measurement, vendor datasheet or explicitly stated scenario. The app does not supply hidden chip defaults.</p>
+        </div>
+
         {/* Results Matrix */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2 border-t border-slate-800">
           <div className="p-4 rounded-xl border border-slate-800 bg-slate-950 space-y-1">
@@ -358,34 +366,30 @@ export function HardwareProfilerView() {
           <div className="p-4 rounded-xl border border-emerald-500/40 bg-slate-950 space-y-1">
             <span className="text-[10px] font-mono text-slate-500 uppercase">Total Silicon Power</span>
             <div className="text-xl font-extrabold text-emerald-400 font-mono">
-              {totalPowerMilliwatts < 1000
-                ? `${totalPowerMilliwatts.toFixed(1)} mW`
-                : `${(totalPowerMilliwatts / 1000).toFixed(2)} W`}
+              {energyPerSopInput > 0 || idlePowerInputMw > 0 ? (totalPowerMilliwatts < 1000 ? `${totalPowerMilliwatts.toFixed(3)} mW` : `${(totalPowerMilliwatts / 1000).toFixed(3)} W`) : "Enter assumptions"}
             </div>
             <p className="text-[10px] text-emerald-400/80">
-              vs {gpuBaselineMilliwatts / 1000}W on conventional GPU
+              {gpuBaselineMilliwatts > 0 ? `Baseline: ${gpuBaselineMilliwatts.toFixed(2)} mW` : "No comparison baseline supplied"}
             </p>
           </div>
 
           <div className="p-4 rounded-xl border border-slate-800 bg-slate-950 space-y-1">
             <span className="text-[10px] font-mono text-slate-500 uppercase">Energy Efficiency Gain</span>
             <div className="text-xl font-extrabold text-teal-300 font-mono">
-              {powerReductionPct.toFixed(1)}%
+              {powerReductionPct === null ? "Not calculated" : `${powerReductionPct.toFixed(1)}%`}
             </div>
             <p className="text-[10px] text-slate-500">Direct battery savings</p>
           </div>
 
           <div className="p-4 rounded-xl border border-slate-800 bg-slate-950 space-y-1">
             <span className="text-[10px] font-mono text-slate-500 uppercase">
-              Battery Life (2500mAh)
+              Battery life (user-supplied battery)
             </span>
             <div className="text-xl font-extrabold text-amber-400 font-mono">
-              {neuromorphicBatteryHours > 24
-                ? `${(neuromorphicBatteryHours / 24).toFixed(0)} days`
-                : `${neuromorphicBatteryHours.toFixed(1)} hours`}
+              {batteryCapacityMwh > 0 && totalPowerMilliwatts > 0 ? (neuromorphicBatteryHours > 24 ? `${(neuromorphicBatteryHours / 24).toFixed(1)} days` : `${neuromorphicBatteryHours.toFixed(1)} hours`) : "Enter battery + power"}
             </div>
             <p className="text-[10px] text-slate-500">
-              GPU runs out in {gpuBatteryHours.toFixed(1)} hours
+              {gpuBaselineMilliwatts > 0 && batteryCapacityMwh > 0 ? `Baseline: ${gpuBatteryHours.toFixed(1)} hours` : "Baseline not supplied"}
             </p>
           </div>
         </div>
