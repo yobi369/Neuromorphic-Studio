@@ -14,7 +14,7 @@ The LIF current convention is I[pA] * R[MOhm] / 1000 in mV. AdEx uses pA/pF and 
 
 ## STDP conventions
 
-Pair STDP maintains exponentially decaying pre/post traces. A pre-arrival event depresses by A_minus times the decayed post trace; a post spike potentiates by A_plus times the decayed pre trace. Weights are clamped to configured bounds.
+The STDP lab manual pair, correlated-train and conditioning interactions now call the same trace engine rather than applying a separate hand-coded weight shortcut. Pair STDP maintains exponentially decaying pre/post traces. A pre-arrival event depresses by A_minus times the decayed post trace; a post spike potentiates by A_plus times the decayed pre trace. Weights are clamped to configured bounds.
 
 Triplet STDP adds slow pre and post traces. The pre event includes the A3-minus triplet term and the post event includes the A3-plus term. Amplitudes and time constants must be fitted or declared; they are not universal constants. Events must be chronological. Network plasticity updates at presynaptic arrival, and post traces update at postsynaptic spike time.
 
