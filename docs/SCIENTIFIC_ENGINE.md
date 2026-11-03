@@ -24,7 +24,7 @@ The original EventDrivenNetwork is a fixed-step LIF network. The HeterogeneousNe
 
 ## Reference comparison
 
-A pinned Brian2 2.9.0 workflow generates one-step state fixtures for LIF, AdEx and Izhikevich with matching RK4 step sizes and compares the TypeScript engine against those fixtures. The CI workflow pins NumPy below 2 due Brian2 compatibility. This checks selected subthreshold trajectories; it is not a complete validation of all firing regimes, synaptic dynamics or network behavior. NEST comparison and independent external reproduction remain open.
+A pinned Brian2 2.9.0 workflow generates one-step state fixtures for LIF, AdEx and Izhikevich with matching RK4 step sizes and compares the TypeScript engine against those fixtures. The CI workflow pins NumPy below 2 due Brian2 compatibility. This checks selected subthreshold trajectories; it is not a complete validation of all firing regimes, synaptic dynamics or network behavior. A separate NEST 3.10.0 workflow compares passive LIF membrane decay; broader NEST neuron/network comparisons and independent external reproduction remain open. A separate Brian2 event-driven pair-STDP fixture checks causal and anti-causal timing windows.
 
 ## Benchmark and dataset adapters
 
