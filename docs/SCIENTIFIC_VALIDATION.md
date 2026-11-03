@@ -7,7 +7,7 @@ The repository now has automated deterministic neuron regression tests, selected
 ## Evidence by subsystem
 
 ### Neuron dynamics
-- Implemented LIF, AdEx and Izhikevich equations with Euler/RK4 fixed-step integration.
+- Implemented LIF, AdEx and Izhikevich equations with Euler/RK4 fixed-step integration; the live sandbox uses the shared tested engine and seeded stimulus generation.
 - Analytical passive-membrane LIF test and timestep-convergence regression.
 - Brian2 2.9.0 subthreshold state comparison for all three models and NEST 3.10.0 passive LIF reference comparison in CI.
 - Still needed: spiking-regime trace/raster comparisons, parameter-regime sweeps, dt-halving error curves and broader NEST cross-checks for firing regimes and network traces.
