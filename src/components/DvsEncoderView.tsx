@@ -226,6 +226,7 @@ export function DvsEncoderView() {
       let onEvents = 0;
       let offEvents = 0;
       const sampleEvents: AerEvent[] = [];
+      const frameEvents: AerEvent[] = [];
       const nowMicros = Math.floor(performance.now() * 1000);
 
       // Downsample/step to keep 60fps silky smooth
@@ -247,6 +248,9 @@ export function DvsEncoderView() {
               if (sampleEvents.length < 5) {
                 sampleEvents.push({ t: nowMicros, x, y, p: 1 });
               }
+              if(frameEvents.length<1000)frameEvents.push({t:nowMicros,x,y,p:1});
+              if(false){
+              }
             } else {
               // OFF Event: Red/Orange
               dvsCtx.fillStyle = "#ff0055";
@@ -254,6 +258,9 @@ export function DvsEncoderView() {
               offEvents++;
               if (sampleEvents.length < 5) {
                 sampleEvents.push({ t: nowMicros, x, y, p: -1 });
+              }
+              if(frameEvents.length<1000)frameEvents.push({t:nowMicros,x,y,p:-1});
+              if(false){
               }
             }
             prev[pIdx] = lum; // Update reference memory on spike
@@ -268,8 +275,8 @@ export function DvsEncoderView() {
       onCountRef.current += onEvents;
       offCountRef.current += offEvents;
 
-      if(sampleEvents.length>0){
-        recentEventsBufferRef.current.push(...sampleEvents);
+      if(frameEvents.length>0){
+        recentEventsBufferRef.current.push(...frameEvents);
         if(recentEventsBufferRef.current.length>1000)recentEventsBufferRef.current=recentEventsBufferRef.current.slice(-1000);
       }
 
