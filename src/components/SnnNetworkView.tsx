@@ -25,7 +25,7 @@ export function SnnNetworkView() {
   // Metrics
   const [totalNetworkSpikes, setTotalNetworkSpikes] = useState<number>(0);
   const [meanFiringRateHz, setMeanFiringRateHz] = useState<number>(0);
-  const [currentSparsity, setCurrentSparsity] = useState<number>(95);
+  const [currentSparsity, setCurrentSparsity] = useState<number>(0);
   const [synapticOpsCount, setSynapticOpsCount] = useState<number>(0);
 
   // Network State
@@ -161,7 +161,11 @@ export function SnnNetworkView() {
     networkRef.current = new HeterogeneousNetwork(engineNeurons,engineConnections);
     rasterDataRef.current = [];
     setTotalNetworkSpikes(0);
+    setMeanFiringRateHz(0);
+    setCurrentSparsity(0);
     setSynapticOpsCount(0);
+    lastSpikeCounterRef.current=0;
+    lastRateTimeRef.current=performance.now();
   };
 
   useEffect(() => {
