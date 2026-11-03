@@ -84,3 +84,12 @@ No scientific or hardware readiness claim should be promoted without retaining t
 ## License
 
 No repository license has been established. Do not assume the code is open source or reusable under an unverified license.
+
+
+## Simulation and deployment boundaries
+
+The live neuron and network workbenches use the deterministic TypeScript engine (LIF, AdEx, Izhikevich, pair/triplet STDP, fixed-step delayed networks). The network workbench uses seeded inputs and topology construction; the STDP workbench uses the shared trace implementation.
+
+The DVS workbench can apply an 8-neighbour background-activity filter to canonical event CSV. It does not decode binary AEDAT recordings. The microcode screen is a software reference simulation; its source editor is a preview only and no supplied source is executed.
+
+Export targets currently produce Lava, snnTorch and portable C99 starter artifacts. CI smoke-tests the Lava floating-point simulator, snnTorch CPU forward pass and GCC C99 compilation. These checks do not validate physical Loihi, Akida, SpiNNaker or MCU hardware, firmware, power, latency or memory budgets.
