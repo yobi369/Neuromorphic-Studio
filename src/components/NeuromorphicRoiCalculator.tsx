@@ -121,8 +121,7 @@ Battery Longevity:
             <span>Neuromorphic Battery Longevity &amp; Fleet ROI Calculator</span>
           </h2>
           <p className="text-xs text-slate-400 max-w-2xl leading-relaxed">
-            Model the massive cost reduction of event-based asynchronous silicon. Compare continuous
-            clock-driven microcontrollers against sparse spike-driven SNN accelerators across real-world edge IoT fleets.
+            Illustrative arithmetic only. Default values are placeholders, not vendor specifications or measurements. Replace every input with a sourced or measured value before using the result in a proposal or publication.
           </p>
         </div>
 
@@ -138,10 +137,14 @@ Battery Longevity:
           ) : (
             <>
               <Copy className="w-4 h-4" />
-              <span>Copy Executive Proposal</span>
+              <span>Copy Scenario Summary</span>
             </>
           )}
         </button>
+      </div>
+
+      <div className="rounded-lg border border-amber-700/40 bg-amber-950/20 p-3 text-xs text-amber-200">
+        Scenario outputs are not evidence that an SNN accelerator uses less energy than an MCU. Battery life assumes constant average load and ideal battery capacity; it excludes conversion losses, temperature, aging, workload variance and device-specific constraints. The carbon factor is illustrative and must be replaced with a location-specific source.
       </div>
 
       {/* Main Grid: Inputs vs Impact Metrics */}
