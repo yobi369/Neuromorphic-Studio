@@ -198,18 +198,17 @@ export function SnnNetworkView() {
 
       // Fixed 1 ms simulation steps make the UI independent of display refresh rate.
       while (accumulatorRef.current >= 1 && substeps < 32) {
-        const spikes = engine.advance(1, 1, (timeMs) => {
-          const currents = new Map<number,number>();
-          for (const n of neurons) {
-            if (n.layer !== "input") continue;
-            let injected = 0;
-            if (inputStimulus === "wave") injected = Math.max(0,Math.sin(timeMs*0.003+n.id*0.8)*16-2);
-            else if (inputStimulus === "sparse_poisson") injected = stimulusRngRef.current()<0.06?18:0;
-            else if (inputStimulus === "burst_ch1" && (n.id===0||n.id===1)) injected = timeMs%600<120?22:0;
-            if (injected>0) currents.set(n.id,injected*100); // nA scenario drive converted to pA
-          }
-          return currents;
-        });
+        const inputTimeMs=engine.timeMs;
+        const externalCurrents=new Map<number,number>();
+        for (const n of neurons) {
+          if (n.layer !== "input") continue;
+          let injected=0;
+          if(inputStimulus==="wave")injected=Math.max(0,Math.sin(inputTimeMs*0.003+n.id*0.8)*16-2);
+          else if(inputStimulus==="sparse_poisson")injected=stimulusRngRef.current()<0.06?18:0;
+          else if(inputStimulus==="burst_ch1"&&(n.id===0||n.id===1))injected=inputTimeMs%600<120?22:0;
+          if(injected>0)externalCurrents.set(n.id,injected*100); // scenario nA units converted to pA
+        }
+        const spikes=engine.advance(1,1,()=>externalCurrents);
         for (const spike of spikes) {
           frameSpikes++;
           activeIds.add(spike.neuronId);
