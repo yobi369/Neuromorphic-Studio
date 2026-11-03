@@ -3,7 +3,7 @@ import { TripletStdpParameters, TripletStdpState, createTripletStdpState, triple
 export type NeuronSpec =
  | {id:number;model:"lif";parameters:LifParameters;state:LifState;biasInput?:number}
  | {id:number;model:"adex";parameters:AdExParameters;state:AdExState;biasInput?:number}
- | {id:number;model:"izhikevich";parameters:IzhikevichParameters;state:IzhikevichState;biasPa?:number};
+ | {id:number;model:"izhikevich";parameters:IzhikevichParameters;state:IzhikevichState;biasInput?:number};
 export interface Connection {id:string;from:number;to:number;weight:number;delayMs:number;plasticity?:StdpParameters;tripletPlasticity?:TripletStdpParameters;stdpState?:StdpState;tripletState?:TripletStdpState;}
 export interface TimedSpike {neuronId:number;timeMs:number;}
 interface Event {at:number;target:number;current:number;connectionId:string;sequence:number;}
