@@ -1,6 +1,6 @@
 import {useState,useEffect} from "react";
 import {Play,Activity,AlertTriangle,Terminal} from "lucide-react";
-interface MicrocodeSandboxProps {onClose?:()=>void;initialCode?:string;initialTarget?:"cpp_micro"|"loihi2_lava";}
+interface MicrocodeSandboxProps {onClose?:()=>void;initialCode?:string;initialTarget?:"cpp_micro"|"loihi2_lava"|"snntorch_pytorch";}
 interface SimulationResult {
  simulator:string;requestedTarget:string;codePreviewProvided:boolean;codeExecuted:boolean;hardwareMetrics:null;
  inputSpikePattern:string;seed:number;dtMs:number;timesteps:number;neuronCount:number;inputEventCount:number;
@@ -9,10 +9,10 @@ interface SimulationResult {
 }
 const PRESETS={
  cpp_micro:"/* Portable C99 LIF kernel preview.\n * This editor is not compiled or executed by the reference simulator.\n * The separately generated exporter artifact has its own GCC CI smoke test.\n */\n#include <stdint.h>\n#define NUM_NEURONS 8\n#define V_THRESHOLD_Q8 256\ntypedef struct { int16_t voltage[NUM_NEURONS]; } lif_state;\nvoid lif_step(lif_state *state,const int16_t current_q8[NUM_NEURONS]);",
- loihi2_lava:"# Lava process-graph preview.\n# The separate exporter workflow executes a generated Lava graph in the\n# Lava floating-point simulator. This text preview is not executed here.\nfrom lava.proc.lif.process import LIF\nlayer = LIF(shape=(8,), du=0, dv=0.1, vth=100)"
+ loihi2_lava:"# Lava process-graph preview.\n# The separate exporter workflow executes a generated Lava graph in the\n# Lava floating-point simulator. This text preview is not executed here.\nfrom lava.proc.lif.process import LIF\nlayer = LIF(shape=(8,), du=0, dv=0.1, vth=100)",\n snntorch_pytorch:"import torch\nimport snntorch as snn\n\n# LIF module preview; initialized parameters, not trained weights.\nclass LIFNetwork(torch.nn.Module):\n    def __init__(self):\n        super().__init__()\n        self.lif = snn.Leaky(beta=0.9)\n\n    def forward(self, x):\n        return self.lif(x)"
 };
 export function MicrocodeSandbox({onClose,initialCode,initialTarget="cpp_micro"}:MicrocodeSandboxProps){
- const [target,setTarget]=useState<"cpp_micro"|"loihi2_lava">(initialTarget);
+ const [target,setTarget]=useState<"cpp_micro"|"loihi2_lava"|"snntorch_pytorch">(initialTarget);
  const [code,setCode]=useState(initialCode||PRESETS[initialTarget]);
  const [spikePattern,setSpikePattern]=useState<"poisson"|"burst"|"dvs_sweep">("poisson");
  const [timesteps,setTimesteps]=useState(100),[neuronCount,setNeuronCount]=useState(8),[seed,setSeed]=useState(20261103);
@@ -37,7 +37,7 @@ export function MicrocodeSandbox({onClose,initialCode,initialTarget="cpp_micro"}
   <section className="rounded-xl border border-slate-800 bg-slate-950 p-4 space-y-3">
    <div className="flex flex-wrap gap-2 items-center justify-between"><strong className="text-sm text-white">Simulation inputs</strong><span className="text-[10px] text-amber-300">Software model, not hardware target execution</span></div>
    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-    <label className="text-xs text-slate-300">Requested export target<select value={target} onChange={e=>{const next=e.target.value as "cpp_micro"|"loihi2_lava";setTarget(next);setCode(PRESETS[next]);}} className="mt-1 w-full rounded bg-slate-900 border border-slate-700 p-2"><option value="cpp_micro">Portable C99 template</option><option value="loihi2_lava">Lava simulator template</option></select></label>
+    <label className="text-xs text-slate-300">Requested export target<select value={target} onChange={e=>{const next=e.target.value as "cpp_micro"|"loihi2_lava"|"snntorch_pytorch";setTarget(next);setCode(PRESETS[next]);}} className="mt-1 w-full rounded bg-slate-900 border border-slate-700 p-2"><option value="cpp_micro">Portable C99 template</option><option value="loihi2_lava">Lava simulator template</option><option value="snntorch_pytorch">snnTorch CPU module</option></select></label>
     <label className="text-xs text-slate-300">Input pattern<select value={spikePattern} onChange={e=>setSpikePattern(e.target.value as typeof spikePattern)} className="mt-1 w-full rounded bg-slate-900 border border-slate-700 p-2"><option value="poisson">Seeded Poisson input</option><option value="burst">Burst input</option><option value="dvs_sweep">Sequential sweep</option></select></label>
     <label className="text-xs text-slate-300">Timesteps: {timesteps} ms<input type="range" min="10" max="1000" step="10" value={timesteps} onChange={e=>setTimesteps(Number(e.target.value))} className="mt-2 w-full"/></label>
     <label className="text-xs text-slate-300">Neurons: {neuronCount}<input type="range" min="4" max="32" step="1" value={neuronCount} onChange={e=>setNeuronCount(Number(e.target.value))} className="mt-2 w-full"/></label>
