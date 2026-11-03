@@ -14,7 +14,7 @@ function authUnavailable(_req:Request,res:Response){res.status(503).json({error:
 const authAttempts=new Map<string,{count:number;resetAt:number}>();
 function rateLimitAuth(req:Request,res:Response,next:NextFunction){const key=req.ip||"unknown",now=Date.now(),v=authAttempts.get(key);if(!v||v.resetAt<now){authAttempts.set(key,{count:1,resetAt:now+15*60_000});return next();}if(v.count>=10)return res.status(429).json({error:"Too many authentication attempts. Try again later."});v.count++;next();}
 function csrfGuard(req:Request,res:Response,next:NextFunction){const origin=req.get("origin");if(origin){const host=req.get("host");const expected=`${req.protocol}://${host}`;if(origin!==expected)return res.status(403).json({error:"Cross-origin request rejected."});}next();}
-async function requireUser(req:Request,res:Response,next:NextFunction){
+export async function requireAuthenticatedUser(req:Request,res:Response,next:NextFunction){
  if(!pool)return authUnavailable(req,res);
  const token=parseCookie(req.headers.cookie,"ns_session");if(!token)return res.status(401).json({error:"Authentication required."});
  try{const result=await pool.query("SELECT user_id FROM sessions WHERE token_hash=$1 AND expires_at>now()",[hashToken(token)]);if(!result.rowCount)return res.status(401).json({error:"Session expired. Sign in again."});res.locals.userId=result.rows[0].user_id;next();}catch{return res.status(503).json({error:"Authentication storage temporarily unavailable."});}
@@ -59,7 +59,7 @@ export function registerInfrastructureRoutes(app:Express){
    res.setHeader("Set-Cookie",`ns_session=${token}; ${cookieOptions(process.env.NODE_ENV==="production")}`);return res.json({user:{id:found.rows[0].id,email:found.rows[0].email,display_name:found.rows[0].display_name}});
   }catch{return res.status(503).json({error:"Authentication service temporarily unavailable."});}
  });
- app.get("/api/auth/me",requireUser,async(_req,res)=>{const r=await pool!.query("SELECT id,email,display_name,created_at FROM users WHERE id=$1",[res.locals.userId]);if(!r.rowCount)return res.status(401).json({error:"Account no longer exists."});res.json({user:r.rows[0]});});
+ app.get("/api/auth/me",requireAuthenticatedUser,async(_req,res)=>{const r=await pool!.query("SELECT id,email,display_name,created_at FROM users WHERE id=$1",[res.locals.userId]);if(!r.rowCount)return res.status(401).json({error:"Account no longer exists."});res.json({user:r.rows[0]});});
  app.post("/api/auth/logout",csrfGuard,async(req,res)=>{const token=parseCookie(req.headers.cookie,"ns_session");if(pool&&token)await pool.query("DELETE FROM sessions WHERE token_hash=$1",[hashToken(token)]);res.setHeader("Set-Cookie",`ns_session=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0${process.env.NODE_ENV==="production"?"; Secure":""}`);res.json({success:true});});
  app.get("/api/projects",requireUser,async(_req,res)=>{const r=await pool!.query("SELECT id,payload,created_at,updated_at FROM projects WHERE user_id=$1 ORDER BY updated_at DESC",[res.locals.userId]);res.json({projects:r.rows.map(safeProject),total:r.rowCount});});
  app.post("/api/projects",requireUser,csrfGuard,async(req,res)=>{
