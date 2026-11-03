@@ -22,7 +22,7 @@ export function MicrocodeSandbox({onClose,initialCode,initialTarget="cpp_micro"}
  async function runSimulation(){
   setIsRunning(true);setError("");
   try{
-   const res=await fetch("/api/microcode/simulate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({target,inputSpikePattern:spikePattern,timesteps,neuronCount,seed,code})});
+   const res=await fetch("/api/microcode/simulate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({target,inputSpikePattern:spikePattern,timesteps,neuronCount,seed,codePreviewProvided:code.length>0})});
    const data=await res.json();if(!res.ok)throw new Error(data.error||"Reference simulation failed.");setSimResult(data);setSelectedNeuronIndex(0);
   }catch(e){setError(e instanceof Error?e.message:"Reference simulation failed.");}
   finally{setIsRunning(false);}
