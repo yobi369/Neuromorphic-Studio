@@ -82,7 +82,7 @@ export function HardwareBridgeModal({
     setTimeout(() => setInjectionStatus(null), 4000);
   };
 
-  const isEnterpriseGated = tier !== "enterprise";
+  const isEnterpriseGated = false;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
