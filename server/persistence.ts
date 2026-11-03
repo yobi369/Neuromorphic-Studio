@@ -112,3 +112,8 @@ export async function consumeEvaluationQuota(userId:string):Promise<"ok"|"minute
   await client.query("COMMIT");return "ok";
  }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
 }
+
+export async function checkPersistence():Promise<boolean>{
+ if(!pool)return false;
+ try{await pool.query("SELECT 1");return true;}catch{return false;}
+}
