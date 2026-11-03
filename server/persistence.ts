@@ -89,9 +89,9 @@ export async function consumeAiQuota(userId:string):Promise<"ok"|"minute"|"day">
  try{
   await client.query("DELETE FROM ai_usage WHERE window_start < now() - interval '2 days'");
   await client.query("BEGIN");
-  const minute=await client.query("INSERT INTO ai_usage(user_id,window_type,window_start,requests) VALUES($1,'minute',date_trunc('minute',now()),1) ON CONFLICT(user_id,window_type,window_start) DO UPDATE SET requests=ai_usage.requests+1 WHERE ai_usage.requests<8 RETURNING requests",[userId]);
+  const minute=await client.query("INSERT INTO ai_usage(user_id,window_type,window_start,requests) VALUES($1,'minute',date_trunc('minute',now()),1) ON CONFLICT(user_id,window_type,window_start) DO UPDATE SET requests=ai_usage.requests+1 WHERE ai_usage.requests<4 RETURNING requests",[userId]);
   if(!minute.rowCount){await client.query("ROLLBACK");return "minute";}
-  const day=await client.query("INSERT INTO ai_usage(user_id,window_type,window_start,requests) VALUES($1,'day',date_trunc('day',now()),1) ON CONFLICT(user_id,window_type,window_start) DO UPDATE SET requests=ai_usage.requests+1 WHERE ai_usage.requests<60 RETURNING requests",[userId]);
+  const day=await client.query("INSERT INTO ai_usage(user_id,window_type,window_start,requests) VALUES($1,'day',date_trunc('day',now()),1) ON CONFLICT(user_id,window_type,window_start) DO UPDATE SET requests=ai_usage.requests+1 WHERE ai_usage.requests<20 RETURNING requests",[userId]);
   if(!day.rowCount){await client.query("ROLLBACK");return "day";}
   await client.query("COMMIT");return "ok";
  }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
