@@ -10,7 +10,28 @@ async function startServer() {
   const app = express();
   const PORT = 3000;
 
-  app.use(express.json({ limit: "10mb" }));
+  app.disable("x-powered-by");
+  app.use(express.json({ limit: "256kb" }));
+
+  // Baseline browser security headers. Configure a deployment-specific CSP
+  // after the final asset and API origins are known.
+  app.use((_req: Request, res: Response, next) => {
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+    res.setHeader("X-Frame-Options", "DENY");
+    res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+    res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+    next();
+  });
+
+  // Fail closed: the current billing/license handlers are mock implementations,
+  // not payment processing or cryptographic license verification.
+  app.use("/api/billing", (_req: Request, res: Response) => {
+    res.status(503).json({
+      error: "Billing and licensing are not enabled in this research prototype.",
+      code: "BILLING_NOT_CONFIGURED",
+    });
+  });
 
   // API Routes
   app.get("/api/health", (_req: Request, res: Response) => {
