@@ -96,3 +96,5 @@ export async function consumeAiQuota(userId:string):Promise<"ok"|"minute"|"day">
   await client.query("COMMIT");return "ok";
  }catch(e){await client.query("ROLLBACK");throw e;}finally{client.release();}
 }
+
+export async function closePersistence(){if(pool){const active=pool;pool=null;await active.end();}}
