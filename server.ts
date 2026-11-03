@@ -6,6 +6,7 @@ import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
 import { initializePersistence, registerInfrastructureRoutes, requireAuthenticatedUser, consumeAiQuota, consumeEvaluationQuota } from "./server/persistence";
 import { exportModel } from "./src/engine/exporters";
+import { filterBackgroundActivity } from "./src/engine/event-filters";
 import { parseLabeledCsv, evaluatePredictions, bootstrapAccuracyStratified, comparePredictionsPaired } from "./src/engine/benchmark";
 import { parseEventCsv, validateDatasetManifest, assertNoSplitLeakage } from "./src/engine/dataset";
 
@@ -1151,41 +1152,46 @@ uint32_t snn_step(const fixed_t* synaptic_inputs) {
     });
   });
 
-  // --- DVS EVENT STREAM & AER FILE PROCESSING ENGINE ---
-  app.post("/api/dvs/process-aer", (req: Request, res: Response) => {
-    const {
-      filename = "recording.aedat",
-      filterMode = "baf",
-      timeWindowUs = 10000,
-      rawText = "",
-    } = req.body;
-
-    let eventCount = 45200;
-    if (rawText && rawText.length > 20) {
-      const lines = rawText.split("\n").filter((l: string) => !l.startsWith("#") && l.trim().length > 0);
-      if (lines.length > 0) {
-        eventCount = lines.length;
-      }
-    }
-
-    const noiseReductionPct = filterMode === "baf" ? 18.4 : 24.2;
-    const filteredCount = Math.round(eventCount * (1 - noiseReductionPct / 100));
-
-    return res.json({
-      success: true,
-      filename,
-      filterMode,
-      timeWindowUs,
-      originalEvents: eventCount,
-      retainedEvents: filteredCount,
-      noiseFilteredEvents: eventCount - filteredCount,
-      noiseReductionPercentage: noiseReductionPct,
-      meanEventRateMeps: Number((filteredCount / (timeWindowUs / 1000)).toFixed(2)),
-      onPolarityRatio: 52.4,
-      offPolarityRatio: 47.6,
-      processingTimeMs: 14.8,
-      message: `Spatiotemporal filter (${filterMode.toUpperCase()}) executed. ${eventCount - filteredCount} thermal noise events purged.`,
-    });
+  // Real CSV event filtering. Raw AEDAT binary decoding is not implemented.
+  app.post("/api/dvs/process-aer", requireAuthenticatedUser, async (req: Request, res: Response) => {
+    const rawText=req.body?.rawText;
+    const filterMode=req.body?.filterMode??"baf";
+    const timeWindowUs=Number(req.body?.timeWindowUs??10_000);
+    const sensorWidth=Number(req.body?.sensorWidth??req.body?.manifest?.sensorWidth);
+    const sensorHeight=Number(req.body?.sensorHeight??req.body?.manifest?.sensorHeight);
+    if(typeof rawText!=="string"||rawText.length<10||rawText.length>180_000)
+      return res.status(400).json({error:"Supply canonical event CSV between 10 bytes and 180 KB. Binary AEDAT decoding is not supported."});
+    if(filterMode!=="baf")return res.status(400).json({error:"Only the background-activity filter (baf) is implemented."});
+    if(!Number.isSafeInteger(timeWindowUs)||timeWindowUs<1||timeWindowUs>1_000_000)
+      return res.status(400).json({error:"timeWindowUs must be an integer from 1 to 1000000."});
+    if(!Number.isInteger(sensorWidth)||sensorWidth<1||sensorWidth>4096||!Number.isInteger(sensorHeight)||sensorHeight<1||sensorHeight>4096)
+      return res.status(400).json({error:"Provide valid sensorWidth and sensorHeight (1–4096)."});
+    let quota:"ok"|"minute"|"day";
+    try{quota=await consumeEvaluationQuota(String(res.locals.userId));}catch{return res.status(503).json({error:"Event processing quota storage unavailable."});}
+    if(quota==="minute")return res.status(429).json({error:"Event processing rate limit reached."});
+    if(quota==="day")return res.status(429).json({error:"Daily event processing allowance reached."});
+    const started=performance.now();
+    try{
+      const events=parseEventCsv(rawText,sensorWidth,sensorHeight);
+      const result=filterBackgroundActivity(events,timeWindowUs,sensorWidth,sensorHeight);
+      const spans=new Map<string,{min:number;max:number}>();
+      for(const event of events){const key=event.split+":"+event.sampleId,span=spans.get(key);if(!span)spans.set(key,{min:event.timestampUs,max:event.timestampUs});else{span.min=Math.min(span.min,event.timestampUs);span.max=Math.max(span.max,event.timestampUs);}}
+      const durationUs=Math.max(1,[...spans.values()].reduce((sum,v)=>sum+Math.max(1,v.max-v.min),0));
+      const on=result.retained.filter(e=>e.polarity===1).length,off=result.retained.length-on;
+      const retainedCsv=["sample_id,label,split,timestamp_us,x,y,polarity",...result.retained.map(e=>[e.sampleId,e.label,e.split,e.timestampUs,e.x,e.y,e.polarity].join(","))].join("\n");
+      const removedPct=events.length?100*result.rejected.length/events.length:0;
+      return res.json({
+        success:true,filename:typeof req.body?.filename==="string"?req.body.filename.slice(0,128):"events.csv",
+        filterMode,timeWindowUs,sensorWidth,sensorHeight,originalEvents:events.length,
+        retainedEvents:result.retained.length,noiseFilteredEvents:result.rejected.length,
+        noiseReductionPercentage:Number(removedPct.toFixed(2)),
+        meanEventRateMeps:Number((result.retained.length/durationUs).toFixed(6)),
+        onPolarityRatio:result.retained.length?Number((100*on/result.retained.length).toFixed(2)):0,
+        offPolarityRatio:result.retained.length?Number((100*off/result.retained.length).toFixed(2)):0,
+        processingTimeMs:Number((performance.now()-started).toFixed(3)),filteredCsv:retainedCsv,
+        message:"Background activity filter applied to the supplied canonical CSV events. Results are computed from this input; no binary AEDAT decoding or hardware measurement is performed."
+      });
+    }catch(error){return res.status(400).json({error:error instanceof Error?error.message:"Invalid event CSV."});}
   });
 
   // Vite middleware for development
