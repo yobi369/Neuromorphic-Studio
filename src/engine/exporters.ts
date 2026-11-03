@@ -54,7 +54,7 @@ from lava.proc.lif.process import LIF
 INPUTS, HIDDEN, OUTPUTS = ${c.inputSize}, ${c.hiddenSize}, ${c.outputSize}
 STEPS = 100
 rng = np.random.default_rng(20261103)
-input_spikes = rng.integers(0, 2, size=(INPUTS, STEPS), dtype=np.int32)
+input_spikes = rng.integers(0, 2, size=(STEPS, INPUTS), dtype=np.int32)
 source = RingBuffer(data=input_spikes)
 hidden = LIF(shape=(HIDDEN,), du=0, dv=${Math.max(0,Math.min(1,1-beta)).toFixed(8)}, vth=${Math.round(c.threshold)})
 output = LIF(shape=(OUTPUTS,), du=0, dv=${Math.max(0,Math.min(1,1-beta)).toFixed(8)}, vth=${Math.round(c.threshold)})
