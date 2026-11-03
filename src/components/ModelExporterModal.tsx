@@ -12,7 +12,6 @@ import {
   Layers,
   Sparkles,
   X,
-  Lock,
   ExternalLink,
   Play,
 } from "lucide-react";
@@ -20,15 +19,13 @@ import {
 interface ModelExporterModalProps {
   isOpen: boolean;
   onClose: () => void;
-  tier: CommercialTier;
-  onOpenPricing: () => void;
+  tier?: CommercialTier;
+  onOpenPricing?: () => void;
 }
 
 export function ModelExporterModal({
   isOpen,
   onClose,
-  tier,
-  onOpenPricing,
 }: ModelExporterModalProps) {
   const [selectedTarget, setSelectedTarget] = useState<ExportTarget>("lava_python");
   const [modelName, setModelName] = useState("EdgeVision_SNN");
@@ -126,8 +123,6 @@ export function ModelExporterModal({
   if (!isOpen) return null;
 
   const currentTargetObj = targets.find((t) => t.id === selectedTarget)!;
-  const isLocked = false;
-
   const handleCopy = () => {
     navigator.clipboard.writeText(generatedCode);
     setCopied(true);
@@ -223,9 +218,6 @@ export function ModelExporterModal({
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 p-4 bg-slate-900/40 border-b border-slate-900">
           {targets.map((target) => {
             const isSelected = selectedTarget === target.id;
-            const requiresUpgrade =
-              false;
-
             return (
               <button
                 key={target.id}
@@ -238,7 +230,6 @@ export function ModelExporterModal({
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className="text-xs font-bold text-slate-200">{target.name}</span>
-                  {requiresUpgrade && <Lock className="w-3.5 h-3.5 text-amber-400" />}
                 </div>
                 <div className="text-[11px] text-slate-400 font-mono mb-1">{target.ext}</div>
                 <div className="text-[10px] text-cyan-400/80 font-mono">{target.badge}</div>
@@ -309,12 +300,7 @@ export function ModelExporterModal({
 
             <button
               onClick={handleDownload}
-              disabled={isLocked}
-              className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-sans font-semibold transition-colors ${
-                isLocked
-                  ? "bg-slate-800 text-slate-500 cursor-not-allowed"
-                  : "bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-bold"
-              }`}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-sans font-bold transition-colors"
             >
               <Download className="w-3.5 h-3.5" />
               <span>Download {filename}</span>
@@ -324,28 +310,7 @@ export function ModelExporterModal({
 
         {/* Code Preview Area */}
         <div className="relative p-6 max-h-[50vh] overflow-y-auto bg-[#020617] font-mono text-xs text-slate-300">
-          {isLocked && (
-            <div className="absolute inset-0 bg-slate-950/90 backdrop-blur-sm z-10 flex flex-col items-center justify-center p-6 text-center space-y-3">
-              <div className="p-3 rounded-2xl bg-amber-950/60 border border-amber-500/40 text-amber-400">
-                <Lock className="w-8 h-8" />
-              </div>
-              <h4 className="text-base font-bold text-slate-100">
-                {currentTargetObj.name} Export is a Pro Feature
-              </h4>
-              <p className="text-xs text-slate-400 max-w-md">
-                This artifact is a starter template. It does not include a physical hardware deployment, firmware image, certified memory budget or device measurements.
-              </p>
-              <button
-                onClick={() => {
-                  onClose();
-                  onOpenPricing();
-                }}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-500 to-teal-400 hover:from-cyan-400 hover:to-teal-300 text-slate-950 font-bold text-xs shadow-lg shadow-cyan-500/20"
-              >
-                Unavailable
-              </button>
-            </div>
-          )}
+
 
           {loading ? (
             <div className="py-12 text-center text-slate-500">
