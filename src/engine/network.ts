@@ -30,7 +30,14 @@ export class HeterogeneousNetwork {
    else {const r=stepIzhikevich(n.state,n.parameters,input,h,method);n.state=r.state;spike=r.spike;}
    if(spike)fired.push({neuronId:n.id,timeMs:now+h});
   }
-  for(const s of fired){this.spikes.push(s);for(const c of this.connections)if(c.from===s.neuronId)this.queue.push({at:s.timeMs+c.delayMs,target:c.to,current:c.weightPa,connectionId:c.id,sequence:this.sequence++});}for(const c of this.connections)if(c.to===s.neuronId){if(c.plasticity&&c.stdpState){c.stdpState=stdpPost(c.stdpState,c.plasticity,s.timeMs);c.weightPa=c.stdpState.weight;}if(c.tripletPlasticity&&c.tripletState){c.tripletState=tripletStdpPost(c.tripletState,c.tripletPlasticity,s.timeMs);c.weightPa=c.tripletState.weight;}}
+  for(const spike of fired){
+   this.spikes.push(spike);
+   for(const c of this.connections)if(c.from===spike.neuronId)this.queue.push({at:spike.timeMs+c.delayMs,target:c.to,current:c.weightPa,connectionId:c.id,sequence:this.sequence++});
+   for(const c of this.connections)if(c.to===spike.neuronId){
+    if(c.plasticity&&c.stdpState){c.stdpState=stdpPost(c.stdpState,c.plasticity,spike.timeMs);c.weightPa=c.stdpState.weight;}
+    if(c.tripletPlasticity&&c.tripletState){c.tripletState=tripletStdpPost(c.tripletState,c.tripletPlasticity,spike.timeMs);c.weightPa=c.tripletState.weight;}
+   }
+  }
   this.clock=now+h;return fired;
  }
  advance(durationMs:number,maxStepMs:number,external:(timeMs:number)=>ReadonlyMap<number,number>=()=>new Map(),method:Integrator="rk4"):TimedSpike[]{
