@@ -41,6 +41,7 @@ export function SnnNetworkView() {
   const networkRef = useRef<HeterogeneousNetwork | null>(null);
   const stimulusRngRef = useRef<(() => number)>(seededRandom(20261104));
   const accumulatorRef = useRef(0);
+  const activeNeuronWindowRef = useRef<Set<number>>(new Set());
 
   // Initialize Network Topology
   const initTopology = () => {
@@ -57,6 +58,7 @@ export function SnnNetworkView() {
     const inhibitoryIds = new Set(hiddenIds.filter(()=>rng()<inhibitoryRatio/100));
     stimulusRngRef.current = seededRandom(20261104);
     accumulatorRef.current = 0;
+    activeNeuronWindowRef.current.clear();
 
     // 1. Input Layer
     for (let i = 0; i < numInput; i++) {
@@ -227,6 +229,7 @@ export function SnnNetworkView() {
         n.v=state.voltageMv;
       }
 
+      for(const id of activeIds)activeNeuronWindowRef.current.add(id);
       if (frameSpikes > 0) spikeAudio.playSpike(Math.min(1.0,frameSpikes/6),1.0);
       lastSpikeCounterRef.current += frameSpikes;
       setTotalNetworkSpikes(prev=>prev+frameSpikes);
@@ -244,8 +247,9 @@ export function SnnNetworkView() {
         const deltaSec = (currentTime - lastRateTimeRef.current) / 1000;
         const rate = Math.round(lastSpikeCounterRef.current / (deltaSec * neurons.length));
         setMeanFiringRateHz(rate);
-        const activePct = (activeIds.size / neurons.length) * 100;
+        const activePct = (activeNeuronWindowRef.current.size / neurons.length) * 100;
         setCurrentSparsity(Number((100 - activePct).toFixed(1)));
+        activeNeuronWindowRef.current.clear();
         lastSpikeCounterRef.current = 0;
         lastRateTimeRef.current = currentTime;
       }
