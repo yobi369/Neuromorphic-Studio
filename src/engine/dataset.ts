@@ -16,7 +16,7 @@ export function parseEventCsv(csv:string,width:number,height:number):EventRecord
 export function validateDatasetManifest(m:DatasetManifest,events:EventRecord[]){
  if(!m||!["train","validation","test"].includes(m.split)||!m.name?.trim()||!m.version?.trim()||!m.source?.trim()||!m.license?.trim()||!m.preprocessing?.trim())throw new Error("dataset provenance fields are required");
  if(!/^[a-f0-9]{64}$/i.test(m.sha256)||!/^[a-f0-9]{64}$/i.test(m.splitHash))throw new Error("dataset and split hashes must be SHA-256 hex digests");
- if(!Number.isInteger(m.seed)||!Number.isInteger(m.sampleCount)||!Number.isInteger(m.eventCount)||m.sampleCount<1||m.eventCount<1)throw new Error("invalid dataset counts or seed");
+ if(!Number.isInteger(m.seed)||m.seed<0||!Number.isInteger(m.sampleCount)||!Number.isInteger(m.eventCount)||m.sampleCount<1||m.eventCount<1)throw new Error("invalid dataset counts or seed");
  if(events.length!==m.eventCount)throw new Error("manifest eventCount does not match parsed events");
  const samples=new Set(events.filter(e=>e.split===m.split).map(e=>e.sampleId));if(samples.size!==m.sampleCount)throw new Error("manifest sampleCount does not match selected split");
  return {verifiedStructure:true,contentHashVerified:false,splitHashVerified:false,selectedSamples:samples.size,events:events.length,warning:"Hash values are syntax-checked only; compute and compare hashes against the original source bytes before reporting a verified dataset."};
