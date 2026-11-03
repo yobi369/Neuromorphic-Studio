@@ -8,9 +8,6 @@ import { initializePersistence, registerInfrastructureRoutes } from "./server/pe
 import { exportModel } from "./src/engine/exporters";
 import { parseLabeledCsv, evaluatePredictions, bootstrapAccuracyStratified, comparePredictionsPaired } from "./src/engine/benchmark";
 import { parseEventCsv, validateDatasetManifest, assertNoSplitLeakage } from "./src/engine/dataset";
-import { initializePersistence, registerInfrastructureRoutes } from "./server/persistence";
-import { exportModel } from "./src/engine/exporters";
-import { parseLabeledCsv, evaluatePredictions, bootstrapAccuracy } from "./src/engine/benchmark";
 
 dotenv.config();
 
@@ -18,7 +15,6 @@ async function startServer() {
   const app = express();
   app.set("trust proxy", 1);
   const persistenceReady = await initializePersistence();
-  registerInfrastructureRoutes(app);
   const PORT = Number(process.env.PORT || 3000);
 
   app.disable("x-powered-by");
@@ -34,6 +30,8 @@ async function startServer() {
     res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
     next();
   });
+
+  registerInfrastructureRoutes(app);
 
   // Fail closed: the current billing/license handlers are mock implementations,
   // not payment processing or cryptographic license verification.
