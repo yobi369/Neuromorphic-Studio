@@ -3,13 +3,13 @@ import assert from "node:assert/strict";
 import express from "express";
 import supertest from "supertest";
 import {initializePersistence,registerInfrastructureRoutes,closePersistence} from "../../server/persistence.ts";
-let agentA:ReturnType<typeof supertest.agent>,agentB:ReturnType<typeof supertest.agent>;
+let agentA:ReturnType<typeof supertest.agent>,agentB:ReturnType<typeof supertest.agent>,testApp:express.Express;
 let projectId="",experimentId="";
 before(async()=>{
  if(!process.env.DATABASE_URL)throw new Error("DATABASE_URL is required for persistence integration tests");
  await initializePersistence();
- const app=express();app.use(express.json());registerInfrastructureRoutes(app);
- agentA=supertest.agent(app);agentB=supertest.agent(app);
+ testApp=express();testApp.use(express.json());registerInfrastructureRoutes(testApp);
+ agentA=supertest.agent(testApp);agentB=supertest.agent(testApp);
 });
 after(async()=>{await closePersistence();});
 test("PostgreSQL auth, project ownership and experiment isolation",async()=>{
@@ -28,7 +28,7 @@ test("PostgreSQL auth, project ownership and experiment isolation",async()=>{
  const me=await agentA.get("/api/auth/me");assert.equal(me.status,200);assert.equal(me.body.user.email,"owner-a@example.test");
 });
 test("Unauthenticated project reads and malformed IDs fail closed",async()=>{
- const anonymous=supertest(express().use(express.json()));
+ const anonymous=supertest(testApp);
  const noSession=await anonymous.get("/api/projects");assert.equal(noSession.status,401);
  const invalid=await agentA.get("/api/experiments/not-a-uuid");assert.equal(invalid.status,400);
 });
