@@ -141,12 +141,13 @@ export function SnnNetworkView() {
     // Hidden to Output
     for (let hid = numInput; hid < numInput + numHidden; hid++) {
       for (let out = numInput + numHidden; out < neurons.length; out++) {
-        if (Math.random() < 0.5) {
+        if (rng() < 0.5) {
+          const inhibitory = inhibitoryIds.has(hid);
           synapses.push({
             fromId: hid,
             toId: out,
-            weight: 0.7 + Math.random() * 1.0,
-            delayMs: 1 + Math.random() * 2,
+            weight: inhibitory ? -(0.7 + rng() * 1.0) : (0.7 + rng() * 1.0),
+            delayMs: 1 + rng() * 2,
             lastActive: -999,
           });
         }
