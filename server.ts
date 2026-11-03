@@ -7,6 +7,7 @@ import dotenv from "dotenv";
 import { initializePersistence, registerInfrastructureRoutes, requireAuthenticatedUser, consumeAiQuota, consumeEvaluationQuota } from "./server/persistence";
 import { exportModel } from "./src/engine/exporters";
 import { filterBackgroundActivity } from "./src/engine/event-filters";
+import { HeterogeneousNetwork, ringTopology, seededRandom } from "./src/engine/network";
 import { parseLabeledCsv, evaluatePredictions, bootstrapAccuracyStratified, comparePredictionsPaired } from "./src/engine/benchmark";
 import { parseEventCsv, validateDatasetManifest, assertNoSplitLeakage } from "./src/engine/dataset";
 
@@ -1041,114 +1042,58 @@ uint32_t snn_step(const fixed_t* synaptic_inputs) {
     });
   });
 
-  // --- VIRTUAL NEUROMORPHIC WASM / MICROCODE EXECUTION ENGINE ---
-  app.post("/api/microcode/simulate", (req: Request, res: Response) => {
-    const {
-      target = "cpp_micro",
-      code = "",
-      inputSpikePattern = "poisson",
-      timesteps = 40,
-      neuronCount = 10,
-    } = req.body;
-
-    const tSteps = Math.min(Math.max(timesteps, 10), 100);
-    const nNeurons = Math.min(Math.max(neuronCount, 4), 32);
-
-    // Simulate realistic fixed-point Leaky Integrate-and-Fire microcode loop
-    const neuronsData: Array<{
-      id: number;
-      name: string;
-      membraneTrace: number[];
-      spikes: number[];
-      vThreshold: number;
-    }> = [];
-
-    const decay = target === "cpp_micro" ? 0.88 : 0.92; // Q8.8 fixed-point decay approximation
-    const vThresh = 1.0;
-    let totalSops = 0;
-    let totalSpikes = 0;
-
-    const logs: string[] = [
-      `[WASM Microcode Boot] Initializing virtual neuromorphic execution sandbox (${target.toUpperCase()})...`,
-      `[Memory Config] Allocating SRAM ring buffers for ${nNeurons} neuron states (Q8.8 fixed-point)...`,
-    ];
-
-    for (let n = 0; n < nNeurons; n++) {
-      let v = 0.0;
-      let refractory = 0;
-      const membraneTrace: number[] = [];
-      const spikes: number[] = [];
-
-      for (let t = 0; t < tSteps; t++) {
-        // Generate simulated input stimulus based on chosen pattern
-        let inputCurrent = 0.0;
-        if (inputSpikePattern === "burst" && t >= 5 && t <= 15) {
-          inputCurrent = Math.random() > 0.4 ? 0.65 : 0.0;
-        } else if (inputSpikePattern === "dvs_sweep") {
-          const sweepPeak = Math.floor((n / nNeurons) * tSteps);
-          if (Math.abs(t - sweepPeak) <= 3) {
-            inputCurrent = 0.75;
-          }
-        } else {
-          // Poisson rate input
-          inputCurrent = Math.random() > 0.65 ? 0.45 : 0.0;
-        }
-
-        if (inputCurrent > 0) totalSops++;
-
-        // LIF update step
-        if (refractory > 0) {
-          refractory--;
-          v = 0.0; // clamp at reset
-        } else {
-          v = v * decay + inputCurrent;
-          if (v >= vThresh) {
-            spikes.push(t);
-            totalSpikes++;
-            v = 0.0; // reset
-            refractory = 2; // 2 time step refractory period
-          }
-        }
-
-        membraneTrace.push(Number(v.toFixed(3)));
+  // Deterministic software reference simulation; it does not execute supplied firmware or emulate hardware cycles.
+  app.post("/api/microcode/simulate", requireAuthenticatedUser, async (req: Request, res: Response) => {
+    const target=String(req.body?.target??"cpp_micro");
+    const pattern=req.body?.inputSpikePattern??"poisson";
+    const timesteps=Number(req.body?.timesteps??100);
+    const neuronCount=Number(req.body?.neuronCount??8);
+    const seed=Number(req.body?.seed??20261103);
+    const code=req.body?.code;
+    if(!["cpp_micro","loihi2_lava","snntorch_pytorch"].includes(target))return res.status(400).json({error:"Unsupported requested export target label."});
+    if(!["poisson","burst","dvs_sweep"].includes(pattern))return res.status(400).json({error:"Unsupported inputSpikePattern."});
+    if(!Number.isInteger(timesteps)||timesteps<10||timesteps>1000||!Number.isInteger(neuronCount)||neuronCount<4||neuronCount>32)
+      return res.status(400).json({error:"timesteps must be 10–1000 and neuronCount 4–32."});
+    if(!Number.isInteger(seed)||seed<0)return res.status(400).json({error:"seed must be a non-negative integer."});
+    if(code!==undefined&&(typeof code!=="string"||code.length>32_000))return res.status(400).json({error:"Code preview must be a string no larger than 32 KB."});
+    let quota:"ok"|"minute"|"day";
+    try{quota=await consumeEvaluationQuota(String(res.locals.userId));}catch{return res.status(503).json({error:"Simulation quota storage unavailable."});}
+    if(quota==="minute")return res.status(429).json({error:"Reference simulation rate limit reached."});
+    if(quota==="day")return res.status(429).json({error:"Daily reference simulation allowance reached."});
+    const started=performance.now(),rng=seededRandom(seed),ids=Array.from({length:neuronCount},(_,i)=>i);
+    const parameters={tauM:20,resistanceMOhm:100,restMv:-70,resetMv:-65,thresholdMv:-50,refractoryMs:2};
+    const neurons=ids.map(id=>({id,model:"lif" as const,parameters,state:{voltageMv:-70,refractoryRemainingMs:0}}));
+    const connections=ringTopology(ids,1).map(edge=>({id:"edge-"+edge.from+"-"+edge.to,from:edge.from,to:edge.to,weight:edge.from%5===0?-1000:1000,delayMs:1}));
+    const network=new HeterogeneousNetwork(neurons,connections);
+    const traces=ids.map(id=>({id,name:"N_"+id,membraneTrace:[] as number[],spikes:[] as number[],vThresholdMv:-50}));
+    const traceById=new Map(traces.map(n=>[n.id,n]));
+    const outgoing=new Map<number,number>();for(const c of connections)outgoing.set(c.from,(outgoing.get(c.from)||0)+1);
+    let inputEventCount=0,spikeCount=0,synapticEventsScheduled=0;
+    for(let step=0;step<timesteps;step++){
+      const input=new Map<number,number>();
+      for(const id of ids){
+        let active=false;
+        if(pattern==="poisson")active=rng()<0.08;
+        else if(pattern==="burst")active=step>=5&&step<=15&&rng()>0.4;
+        else active=id===Math.min(neuronCount-1,Math.floor(step/timesteps*neuronCount));
+        if(active){input.set(id,3000);inputEventCount++;}
       }
-
-      neuronsData.push({
-        id: n,
-        name: `N_${n}`,
-        membraneTrace,
-        spikes,
-        vThreshold: vThresh,
-      });
+      const spikes=network.advance(1,1,()=>input);
+      for(const spike of spikes){spikeCount++;synapticEventsScheduled+=outgoing.get(spike.neuronId)||0;traceById.get(spike.neuronId)?.spikes.push(Number(spike.timeMs.toFixed(3)));}
+      for(const id of ids)traceById.get(id)!.membraneTrace.push(Number(network.getState(id).voltageMv.toFixed(4)));
     }
-
-    logs.push(`[Execution Trace] Finished ${tSteps} timesteps execution. Total SOPs: ${totalSops}. Spikes fired: ${totalSpikes}.`);
-    logs.push(`[Timing Verified] Spike timing jitter < 0.05% across all asynchronous channels.`);
-
-    // Estimated memory & power
-    const sramBytes = nNeurons * 4 + nNeurons * 16 + 64; // states + weights + circular queue
-    const flashBytes = target === "cpp_micro" ? 1420 : 3800;
-    const energyEstimateUj = Number((totalSops * 0.0018).toFixed(3)); // ~1.8 pJ per SOP = 0.0018 uJ per 1000
-
+    const softwareElapsedMs=Number((performance.now()-started).toFixed(3));
     return res.json({
-      success: true,
-      target,
-      timesteps: tSteps,
-      cyclesTotal: tSteps * nNeurons * 12, // 12 cycles per neuron per step
-      sramUsedBytes: sramBytes,
-      flashUsedBytes: flashBytes,
-      sopCount: totalSops,
-      activeSpikeCount: totalSpikes,
-      energyEstimateUj,
-      neurons: neuronsData,
-      logs,
-      registers: {
-        PC: "0x080002A4",
-        CYCLE: tSteps * 120,
-        ACC_V: "0x00FE (Q8.8)",
-        SPIKE_REG: `0x${Math.min(totalSpikes, 65535).toString(16).padStart(4, "0").toUpperCase()}`,
-        REFRACT_CTR: 0,
-      },
+      success:true,simulator:"Neuromorphic Studio deterministic TypeScript LIF reference engine",
+      requestedTarget:target,codePreviewProvided:typeof code==="string"&&code.length>0,codeExecuted:false,hardwareMetrics:null,
+      inputSpikePattern:pattern,seed,dtMs:1,timesteps,neuronCount,inputEventCount,activeSpikeCount:spikeCount,
+      synapticEventsScheduled,softwareElapsedMs,membraneUnits:"mV",inputCurrentUnits:"pA",
+      neurons:traces,logs:[
+        "Executed the shared fixed-step LIF reference engine; supplied source code was not executed.",
+        "Ring topology uses 1 ms synaptic delays and source-consistent excitatory/inhibitory signs.",
+        "Input events, membrane traces and spike times are generated from the declared seed and parameters.",
+        "No hardware cycle count, SRAM/flash usage, energy, latency or device telemetry is inferred."
+      ]
     });
   });
 
