@@ -17,6 +17,7 @@ import { ModelExporterModal } from "./components/ModelExporterModal";
 import { HardwareBridgeModal } from "./components/HardwareBridgeModal";
 import { ShareLaunchModal } from "./components/ShareLaunchModal";
 import { AuthGate } from "./components/AuthGate";
+import { ExperimentHistoryModal } from "./components/ExperimentHistoryModal";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<AppTab>("overview");
@@ -64,6 +65,7 @@ export default function App() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isHardwareOpen, setIsHardwareOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   const handleUpdateTier = (newTier: CommercialTier, newLicenseKey?: string) => {
     setUserProfile((prev) => ({
@@ -95,6 +97,12 @@ export default function App() {
         onOpenExport={() => setIsExportOpen(true)}
         onOpenShare={() => setIsShareOpen(true)}
       />
+
+      <div className="mx-auto flex w-full max-w-7xl justify-end px-4 pt-3">
+        <button onClick={() => setIsHistoryOpen(true)} className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-cyan-300 hover:border-cyan-500">
+          Experiment history
+        </button>
+      </div>
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
@@ -166,6 +174,14 @@ export default function App() {
       <ShareLaunchModal
         isOpen={isShareOpen}
         onClose={() => setIsShareOpen(false)}
+      />
+
+      <ExperimentHistoryModal
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        projectId={activeProject.id}
+        projectName={activeProject.name}
+        projectConfig={activeProject.config as unknown as Record<string, unknown>}
       />
 
       {/* Footer */}
