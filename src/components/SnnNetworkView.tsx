@@ -194,7 +194,7 @@ export function SnnNetworkView() {
 
       // Fixed 1 ms simulation steps make the UI independent of display refresh rate.
       while (accumulatorRef.current >= 1 && substeps < 32) {
-        const steps = engine.advance(1, 1, (timeMs) => {
+        const spikes = engine.advance(1, 1, (timeMs) => {
           const currents = new Map<number,number>();
           for (const n of neurons) {
             if (n.layer !== "input") continue;
@@ -206,7 +206,7 @@ export function SnnNetworkView() {
           }
           return currents;
         });
-        for (const step of steps) for (const spike of step.spikes) {
+        for (const spike of spikes) {
           frameSpikes++;
           activeIds.add(spike.neuronId);
           rasterDataRef.current.push({id:spike.neuronId,time:spike.timeMs});
