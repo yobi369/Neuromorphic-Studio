@@ -14,6 +14,7 @@ export function parseLabeledCsv(csv:string):LabeledPrediction[]{
 }
 export function evaluatePredictions(rows:LabeledPrediction[]):EvaluationMetrics{
  if(rows.length===0)throw new Error("at least one prediction is required");
+ if(new Set(rows.map(r=>r.sampleId)).size!==rows.length)throw new Error("sample_id values must be unique");
  const classes=[...new Set(rows.flatMap(r=>[r.actual,r.predicted]))].sort();const lookup=new Map(classes.map((c,i)=>[c,i]));
  const matrix=classes.map(()=>classes.map(()=>0));let correct=0;const latencies:number[]=[];
  for(const r of rows){if(!r.sampleId||!r.actual||!r.predicted)throw new Error("sampleId, actual and predicted are required");matrix[lookup.get(r.actual)!][lookup.get(r.predicted)!]++;if(r.actual===r.predicted)correct++;
@@ -39,7 +40,7 @@ export function bootstrapAccuracyStratified(rows:LabeledPrediction[],resamples=2
  return {estimate:rows.filter(r=>r.actual===r.predicted).length/rows.length,lower:q(alpha),upper:q(1-alpha),confidenceLevel,resamples,seed};
 }
 export function comparePredictionsPaired(candidate:LabeledPrediction[],baseline:LabeledPrediction[]){
- const byId=new Map(baseline.map(r=>[r.sampleId,r]));if(byId.size!==baseline.length||candidate.length!==baseline.length)throw new Error("paired predictions require unique sample IDs and equal sample counts");
+ const byId=new Map(baseline.map(r=>[r.sampleId,r]));if(byId.size!==baseline.length||new Set(candidate.map(r=>r.sampleId)).size!==candidate.length||candidate.length!==baseline.length)throw new Error("paired predictions require unique sample IDs and equal sample counts");
  let candidateOnly=0,baselineOnly=0;for(const c of candidate){const b=byId.get(c.sampleId);if(!b||b.actual!==c.actual)throw new Error("candidate and baseline must contain identical sample IDs and labels");const cCorrect=c.actual===c.predicted,bCorrect=b.actual===b.predicted;if(cCorrect&&!bCorrect)candidateOnly++;if(!cCorrect&&bCorrect)baselineOnly++;}
  const n=candidateOnly+baselineOnly;let tail=0;if(n>0){const k=Math.min(candidateOnly,baselineOnly);let probability=Math.pow(.5,n);tail=probability;for(let i=0;i<k;i++){probability*=((n-i)/(i+1));tail+=probability;}tail=Math.min(1,2*tail);}
  return {samples:candidate.length,candidateOnlyWins:candidateOnly,baselineOnlyWins:baselineOnly,exactMcNemarPValue:tail};
