@@ -31,3 +31,9 @@ Run npm test. Tests cover a passive-membrane analytical comparison, threshold/re
 - Cross-check STDP curves against an independent analytical implementation, including nonzero delays and simultaneous events.
 - Compare network raster and weight traces against Brian2 or NEST fixtures.
 - Have an independent researcher reproduce versioned experiments from committed parameter manifests and input hashes.
+
+## Benchmark evaluation primitives
+
+The benchmark module currently ingests a strict, unquoted CSV table containing sample_id, actual, predicted, and optional latency_ms. It computes a confusion matrix, accuracy, macro-F1, and mean supplied latency. A seeded percentile bootstrap reports a reproducible accuracy interval; the seed and resample count are returned with the result. Candidate/baseline summaries can be compared when both summaries use the same sample count.
+
+This is an evaluation primitive, not a dataset loader for raw N-MNIST, DVS Gesture, or SHD event files. It does not yet establish official train/validation/test splits, class-balanced bootstrap intervals, paired per-sample baseline significance tests, energy measurement, or dataset licensing/provenance. Never label an uploaded arbitrary prediction CSV as an official benchmark result. Record dataset version, split hash, preprocessing, model configuration, software versions, hardware and random seeds in the experiment manifest before making comparative claims.
