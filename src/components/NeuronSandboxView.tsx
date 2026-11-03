@@ -132,7 +132,7 @@ export function NeuronSandboxView() {
   const nextRandom = () => { let x = randomRef.current; x ^= x << 13; x ^= x >>> 17; x ^= x << 5; randomRef.current = x >>> 0; return (randomRef.current >>> 0) / 4294967296; };
   const nextGaussian = () => { const u1 = Math.max(1e-12, nextRandom()); return Math.sqrt(-2 * Math.log(u1)) * Math.cos(2 * Math.PI * nextRandom()); };
 
-  useEffect(() => { resetSimulation(); }, [modelType]);
+  useEffect(() => { resetSimulation(); }, [modelType, izhPreset]);
 
   // Physics Simulation Loop
   useEffect(() => {
