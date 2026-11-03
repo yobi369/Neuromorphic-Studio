@@ -4,7 +4,7 @@ import { createHash } from "node:crypto";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import dotenv from "dotenv";
-import { initializePersistence, registerInfrastructureRoutes } from "./server/persistence";
+import { initializePersistence, registerInfrastructureRoutes, requireAuthenticatedUser } from "./server/persistence";
 import { exportModel } from "./src/engine/exporters";
 import { parseLabeledCsv, evaluatePredictions, bootstrapAccuracyStratified, comparePredictionsPaired } from "./src/engine/benchmark";
 import { parseEventCsv, validateDatasetManifest, assertNoSplitLeakage } from "./src/engine/dataset";
@@ -49,8 +49,8 @@ async function startServer() {
 
   // Guarded server-side research assistant. This endpoint is advisory, not a compiler.
   const aiRate = new Map<string, { count: number; resetAt: number }>();
-  app.post("/api/neuromorphic-ai", async (req: Request, res: Response) => {
-    const ip = req.ip || "unknown", now = Date.now(), usage = aiRate.get(ip);
+  app.post("/api/neuromorphic-ai", requireAuthenticatedUser, async (req: Request, res: Response) => {
+    const ip = String(res.locals.userId || req.ip || "unknown"), now = Date.now(), usage = aiRate.get(ip);
     if (!usage || usage.resetAt < now) aiRate.set(ip, { count: 1, resetAt: now + 60_000 });
     else if (usage.count >= 8) return res.status(429).json({ error: "AI request limit reached. Try again in one minute." });
     else usage.count++;
