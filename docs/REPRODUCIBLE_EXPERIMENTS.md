@@ -16,7 +16,9 @@ python validation/official_datasets.py nmnist --root ./datasets --split test --o
 
 Replace nmnist with dvs_gesture or shd. The script requires the researcher to supply the applicable license/terms after checking the upstream source. --max-samples is a smoke subset and is explicitly recorded as such; never report it as a full official benchmark. The Tonic adapter version and source links must be recorded in the paper/report. Dataset download is optional and is not run in CI because the complete datasets are large.
 
-Important adapter caveat: Tonic documents its DVSGesture class as a preprocessed variant in which original multi-label recordings are segmented into samples and timestamp precision is reduced to milliseconds. The exporter records this note in the manifest. Tonic event timestamps are represented in microseconds, but the original precision of the upstream DVS Gesture data remains millisecond-level. Cite the exact dataset variant rather than describing it as untouched raw recordings.\n\nThe canonical event CSV is:
+Important adapter caveat: Tonic documents its DVSGesture class as a preprocessed variant in which original multi-label recordings are segmented into samples and timestamp precision is reduced to milliseconds. The exporter records this note in the manifest. Tonic event timestamps are represented in microseconds, but the original precision of the upstream DVS Gesture data remains millisecond-level. Cite the exact dataset variant rather than describing it as untouched raw recordings.
+
+The canonical event CSV is:
 sample_id,label,split,timestamp_us,x,y,polarity
 
 The API /api/datasets/validate-events endpoint verifies the uploaded CSV SHA-256 and the SHA-256 of sorted sample IDs for the selected split, checks event bounds/order and rejects sample IDs appearing in multiple splits. The endpoint currently accepts CSV bodies up to 180 KB; use the Python manifest/export workflow for larger datasets and do not send large event files through the current API.
