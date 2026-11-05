@@ -7,12 +7,16 @@ prefs.codegen.target = "numpy"
 defaultclock.dt = 0.01 * ms
 start_scope()
 
-# Passive LIF: same differential equation and RK4 integration as the TS core.
-lif = NeuronGroup(1, "dv/dt = (v_rest-v)/tau : volt", method="rk4")
+# Passive LIF: declare model parameters as constant state variables so Brian2
+# treats them as dimensioned parameters rather than undeclared Python attributes.
+lif = NeuronGroup(1, """
+dv/dt = (v_rest-v)/tau : volt
+v_rest : volt (constant)
+tau : second (constant)
+""", method="rk4")
 lif.v = -60*mV
 lif.v_rest = -70*mV
 lif.tau = 20*ms
-ml = StateMonitor(lif, "v", record=True)
 run(1*ms)
 
 # AdEx subthreshold dynamics, with explicitly dimensioned conductance/capacitance.
@@ -33,7 +37,6 @@ adex = NeuronGroup(1, eq_adex, method="rk4")
 adex.v=-70*mV; adex.w=0*pA; adex.gL=10*nS; adex.EL=-70*mV
 adex.DeltaT=2*mV; adex.VT=-50*mV; adex.C=200*pF
 adex.a=2*nS; adex.tauw=100*ms; adex.I=0*pA
-ma=StateMonitor(adex, ["v","w"], record=True)
 run(0.1*ms)
 
 # Izhikevich subthreshold equations in mV and ms.
@@ -47,7 +50,6 @@ I : 1
 """
 izh=NeuronGroup(1,eq_izh,method="rk4")
 izh.v=-65*mV; izh.u=-13; izh.a=.02; izh.b=.2; izh.I=0
-mi=StateMonitor(izh,["v","u"],record=True)
 run(.1*ms)
 
 fixture={
