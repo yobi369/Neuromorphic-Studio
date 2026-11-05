@@ -25,7 +25,11 @@ The repository now has automated deterministic neuron regression tests, selected
 - Delay-boundary splitting, raster binning and spike-train summaries.
 - Still needed: recurrent benchmark fixtures, large sparse networks, conductance synapses, event-time root finding, stochastic inputs and full reference raster/weight-trace comparison.
 
-### Event filtering\n- 8-neighbour background activity filter with per-sample temporal surfaces and tests for temporal support, sample isolation and bounds.\n- The UI submits bounded canonical CSV event samples; binary AEDAT decoding and full-frame archival are not implemented.\n\n### Datasets and benchmarks
+### Event filtering
+- 8-neighbour background activity filter with per-sample temporal surfaces and tests for temporal support, sample isolation and bounds.
+- The UI submits bounded canonical CSV event samples; binary AEDAT decoding and full-frame archival are not implemented.
+
+### Datasets and benchmarks
 - Tonic 1.6.0 adapters for N-MNIST, IBM DVS Gesture and SHD train/test.
 - Canonical event CSV export with SHA-256, split hash, counts, loader version and explicit license declaration.
 - Prediction evaluation with accuracy, macro-F1, confusion matrix, stratified bootstrap interval and paired exact McNemar test.
