@@ -16,6 +16,8 @@ import { ProjectWorkspaceModal } from "./components/ProjectWorkspaceModal";
 import { ModelExporterModal } from "./components/ModelExporterModal";
 import { HardwareBridgeModal } from "./components/HardwareBridgeModal";
 import { ShareLaunchModal } from "./components/ShareLaunchModal";
+import { AuthGate } from "./components/AuthGate";
+import { ExperimentHistoryModal } from "./components/ExperimentHistoryModal";
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<AppTab>("overview");
@@ -25,19 +27,26 @@ export default function App() {
     const saved = localStorage.getItem("neuromorphic_user_profile");
     if (saved) {
       try {
-        return JSON.parse(saved);
-      } catch (e) {}
+        const parsed = JSON.parse(saved);
+        const isLegacyDemoProfile =
+          parsed?.email === "elena.rostova@neuromorphic-systems.org" ||
+          parsed?.licenseKey === "NEURO-PRO-2026-RCH3-AKIDA";
+        if (!isLegacyDemoProfile) return parsed;
+        localStorage.removeItem("neuromorphic_user_profile");
+      } catch {
+        localStorage.removeItem("neuromorphic_user_profile");
+      }
     }
     return {
-      id: "usr-8819",
-      name: "Dr. Elena Rostova",
-      email: "elena.rostova@neuromorphic-systems.org",
-      institution: "Advanced Brain-Inspired Edge Computing Lab",
-      tier: "pro" as CommercialTier,
-      role: "Lead Scientist",
-      licenseKey: "NEURO-PRO-2026-RCH3-AKIDA",
-      licenseValidUntil: "2027-06-30T00:00:00Z",
-      activeWorkspace: "Autonomous Robotics Lab",
+      id: "local-researcher",
+      name: "Researcher",
+      email: "",
+      institution: "Personal workspace",
+      tier: "community" as CommercialTier,
+      role: "Research Engineer",
+      licenseKey: "",
+      licenseValidUntil: "",
+      activeWorkspace: "Personal workspace",
     };
   });
 
@@ -47,24 +56,7 @@ export default function App() {
 
   // Current Experiment / Project State
   const [activeProject, setActiveProject] = useState<ProjectExperiment>({
-    id: "proj-dvs-optical-flow",
-    name: "High-Speed DVS Gesture & Optical Flow",
-    description: "Asynchronous AER event stream filtering and temporal motion vector extraction on Prophesee EVK4.",
-    category: "Vision & DVS",
-    targetHardware: "SynSense Speck / Prophesee EVK4",
-    createdAt: "2026-08-20T10:00:00Z",
-    updatedAt: "2026-09-02T16:30:00Z",
-    neuronCount: 128,
-    synapseCount: 4096,
-    sparsityPercent: 96.8,
-    tags: ["DVS", "Optical Flow", "AER", "Sub-1ms"],
-    config: {
-      modelType: "lif",
-      encodingScheme: "delta_dvs",
-      layers: [64, 48, 16],
-      isStdpEnabled: true,
-      tau_m: 20.0,
-    },
+    id: "new-project", name: "Untitled experiment", description: "", category: "Vision & DVS", targetHardware: "Not selected", createdAt: new Date().toISOString(), updatedAt: new Date().toISOString(), neuronCount: 0, synapseCount: 0, sparsityPercent: 0, tags: [], config: { modelType: "lif", encodingScheme: "delta_dvs", layers: [64, 32, 10], isStdpEnabled: false, tau_m: 20.0 },
   });
 
   // Modal Visibility States
@@ -73,6 +65,7 @@ export default function App() {
   const [isExportOpen, setIsExportOpen] = useState(false);
   const [isHardwareOpen, setIsHardwareOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
 
   const handleUpdateTier = (newTier: CommercialTier, newLicenseKey?: string) => {
     setUserProfile((prev) => ({
@@ -90,6 +83,7 @@ export default function App() {
   };
 
   return (
+    <AuthGate>
     <div className="min-h-screen bg-[#030712] text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
       {/* Top Application Header with Live Telemetry & Commercial Toolset */}
       <Header
@@ -103,6 +97,12 @@ export default function App() {
         onOpenExport={() => setIsExportOpen(true)}
         onOpenShare={() => setIsShareOpen(true)}
       />
+
+      <div className="mx-auto flex w-full max-w-7xl justify-end px-4 pt-3">
+        <button onClick={() => setIsHistoryOpen(true)} className="rounded-lg border border-slate-700 bg-slate-900 px-3 py-2 text-xs font-semibold text-cyan-300 hover:border-cyan-500">
+          Experiment history
+        </button>
+      </div>
 
       {/* Main Content Area */}
       <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
@@ -176,12 +176,20 @@ export default function App() {
         onClose={() => setIsShareOpen(false)}
       />
 
+      <ExperimentHistoryModal
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        projectId={activeProject.id}
+        projectName={activeProject.name}
+        projectConfig={activeProject.config as unknown as Record<string, unknown>}
+      />
+
       {/* Footer */}
       <footer className="border-t border-slate-900 bg-slate-950/80 py-4 mt-auto text-center text-xs font-mono text-slate-500">
         <div className="max-w-7xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-2">
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-cyan-400 inline-block animate-pulse" />
-            <span>NEUROMORPHIC STUDIO ENTERPRISE • LICENSED TO: {userProfile.institution.toUpperCase()}</span>
+            <span>NEUROMORPHIC STUDIO RESEARCH PROTOTYPE • WORKSPACE: {userProfile.institution.toUpperCase()}</span>
           </div>
           <div className="flex items-center gap-3">
             <button
@@ -200,11 +208,12 @@ export default function App() {
               Commercial License EULA
             </button>
             <span>•</span>
-            <span>Compatible: Intel Loihi 2, BrainChip Akida &amp; Prophesee EVK4</span>
+            <span>Export scaffolds: Lava, snnTorch &amp; embedded C (not hardware-certified)</span>
           </div>
         </div>
       </footer>
     </div>
+    </AuthGate>
   );
 }
 

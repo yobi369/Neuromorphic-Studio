@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { StdpParams } from "../types";
+import { createStdpState, stdpPre, stdpPost, StdpState, StdpParameters } from "../engine/index";
 import { spikeAudio } from "../utils/audioSynth";
 import {
   Zap,
@@ -29,6 +30,13 @@ export function StdpLabView() {
   // Interactive single spike delta t slider
   const [deltaT, setDeltaT] = useState<number>(10.0); // ms
   const [currentWeight, setCurrentWeight] = useState<number>(0.5);
+  const stdpStateRef = useRef<StdpState>(createStdpState(0.5));
+  const stdpClockRef = useRef(0);
+  const bellStateRef = useRef<StdpState>(createStdpState(0.1));
+  const bellClockRef = useRef(0);
+  const randomRef = useRef(0x4f1bbcdc);
+  const nextRandom = () => { let x=randomRef.current; x^=x<<13; x^=x>>>17; x^=x<<5; randomRef.current=x>>>0; return (randomRef.current>>>0)/4294967296; };
+  const engineParams = ():StdpParameters => ({aPlus:params.a_plus,aMinus:params.a_minus,tauPlusMs:params.tau_plus,tauMinusMs:params.tau_minus,minWeight:params.w_min,maxWeight:params.w_max});
 
   // Correlation experiment mode
   const [experimentMode, setExperimentMode] = useState<"manual" | "correlated_train" | "pavlov_conditioning">("manual");
@@ -61,16 +69,21 @@ export function StdpLabView() {
 
   // Apply manual single-pair spike
   const handleApplySinglePair = () => {
-    const dw = calculateDeltaW(deltaT);
-    const newW = Math.max(params.w_min, Math.min(params.w_max, currentWeight + dw));
-    setCurrentWeight(Number(newW.toFixed(4)));
-    setWeightHistory((prev) => [...prev.slice(-100), newW]);
-    spikeAudio.playSpike(0.8, deltaT > 0 ? 1.2 : 0.8);
+    const p=engineParams(),t=stdpClockRef.current;
+    let next=stdpStateRef.current;
+    if(deltaT>0){next=stdpPre(next,p,t);next=stdpPost(next,p,t+deltaT);}
+    else if(deltaT<0){next=stdpPost(next,p,t);next=stdpPre(next,p,t+Math.abs(deltaT));}
+    stdpStateRef.current=next;stdpClockRef.current=t+Math.abs(deltaT)+1;
+    setCurrentWeight(Number(next.weight.toFixed(4)));
+    setWeightHistory(prev=>[...prev.slice(-100),next.weight]);
+    spikeAudio.playSpike(0.8,deltaT>0?1.2:0.8);
   };
 
   // Reset experiment
   const handleReset = () => {
     setCurrentWeight(params.w_init);
+    stdpStateRef.current=createStdpState(params.w_init);stdpClockRef.current=0;
+    bellStateRef.current=createStdpState(0.1);bellClockRef.current=0;randomRef.current=0x4f1bbcdc;
     setWeightHistory([params.w_init]);
     setPavlovTrials(0);
     setBellWeight(0.1);
@@ -174,27 +187,21 @@ export function StdpLabView() {
     ctx.fillText("ΔW (Weight Delta)", w / 2 + 8, 15);
   }, [params, deltaT, manualDeltaW]);
 
-  // Continuous Correlated Train Loop
+  // Correlated spike pairs update the same trace-based STDP engine used by regression tests.
   useEffect(() => {
     if (experimentMode !== "correlated_train" || !isSimulating) return;
-
     const interval = setInterval(() => {
-      // Simulate pairs with causal correlation bias (pre fires 12ms before post)
-      const noise = (Math.random() - 0.5) * 16;
-      const sampledDt = 12 + noise; // Mean +12ms
-      const dw = calculateDeltaW(sampledDt);
-
-      setCurrentWeight((prev) => {
-        const next = Math.max(params.w_min, Math.min(params.w_max, prev + dw));
-        setWeightHistory((hist) => [...hist.slice(-120), next]);
-        return Number(next.toFixed(4));
-      });
-
-      spikeAudio.playSpike(0.4, 1.1);
-    }, 120);
-
-    return () => clearInterval(interval);
-  }, [experimentMode, isSimulating, params]);
+      const p=engineParams(),dt=12+(nextRandom()-0.5)*16,t=stdpClockRef.current;
+      let next=stdpStateRef.current;
+      if(dt>=0){next=stdpPre(next,p,t);next=stdpPost(next,p,t+dt);}
+      else{next=stdpPost(next,p,t);next=stdpPre(next,p,t+Math.abs(dt));}
+      stdpStateRef.current=next;stdpClockRef.current=t+Math.abs(dt)+20;
+      setCurrentWeight(Number(next.weight.toFixed(4)));
+      setWeightHistory(hist=>[...hist.slice(-120),next.weight]);
+      spikeAudio.playSpike(0.4,1.1);
+    },120);
+    return ()=>clearInterval(interval);
+  },[experimentMode,isSimulating,params]);
 
   // Draw Weight Evolution History
   useEffect(() => {
@@ -257,27 +264,15 @@ export function StdpLabView() {
 
   // Pavlov Experiment Action
   const triggerPavlovTrial = (type: "bell_only" | "pair_bell_food" | "food_only") => {
-    if (type === "pair_bell_food") {
-      // Bell fires 10ms before Food -> STDP strengthens Bell synapse!
-      const dt = 10;
-      const dw = calculateDeltaW(dt) * 2.0; // Accelerated demonstration
-      const newBellW = Math.min(1.0, bellWeight + dw);
-      setBellWeight(Number(newBellW.toFixed(3)));
-      setPavlovTrials((prev) => prev + 1);
-      setConditionedResponseFired(true);
-      spikeAudio.playSpike(0.9, 1.3);
-    } else if (type === "bell_only") {
-      // If Bell synapse strong enough (>0.6), trigger salivation
-      if (bellWeight >= 0.55) {
-        setConditionedResponseFired(true);
-        spikeAudio.playSpike(0.8, 1.2);
-      } else {
-        setConditionedResponseFired(false);
-      }
-    } else if (type === "food_only") {
-      setConditionedResponseFired(true);
-      spikeAudio.playSpike(0.7, 1.0);
-    }
+    const p=engineParams(),t=bellClockRef.current;let next=bellStateRef.current;
+    if(type==="pair_bell_food"){next=stdpPre(next,p,t);next=stdpPost(next,p,t+10);setPavlovTrials(v=>v+1);}
+    else if(type==="bell_only")next=stdpPre(next,p,t);
+    else next=stdpPost(next,p,t);
+    bellStateRef.current=next;bellClockRef.current=t+20;
+    setBellWeight(Number(next.weight.toFixed(3)));
+    const conditioned=type==="food_only"||(type==="bell_only"&&next.weight>=0.55);
+    setConditionedResponseFired(conditioned);
+    if(conditioned)spikeAudio.playSpike(0.8,1.1);
   };
 
   return (

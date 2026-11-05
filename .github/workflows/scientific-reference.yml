@@ -1,0 +1,30 @@
+name: Scientific reference validation
+on:
+  push:
+    branches: [main, "product/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  brian2-reference:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --disable-pip-version-check "numpy<2" brian2==2.9.0
+      - run: python validation/brian2_reference.py
+      - run: python validation/brian2_convergence_reference.py
+      - run: python validation/brian2_stdp_reference.py
+      - run: python validation/brian2_triplet_stdp_reference.py
+      - run: npm install --no-audit --no-fund
+      - run: npm test
+      - run: npm run typecheck
+      - run: npm run build

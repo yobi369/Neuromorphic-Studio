@@ -77,12 +77,12 @@ export function HardwareBridgeModal({
 
   const handleInjectSpikes = (device: HardwareDevice) => {
     setInjectionStatus(
-      `Injected ${testBurstCount.toLocaleString()} synthetic AER events into ${device.name}. Measured loopback latency: ${device.latencyUs}µs.`
+      `No physical transport is configured; no events were sent and no latency was measured.`
     );
     setTimeout(() => setInjectionStatus(null), 4000);
   };
 
-  const isEnterpriseGated = tier !== "enterprise";
+  const isEnterpriseGated = false;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md overflow-y-auto">
@@ -99,11 +99,11 @@ export function HardwareBridgeModal({
                   Hardware-In-The-Loop (HITL) Silicon Bridge
                 </h2>
                 <span className="px-2 py-0.5 rounded text-[11px] font-mono uppercase bg-emerald-950 border border-emerald-500/40 text-emerald-300">
-                  WebUSB &amp; WebSocket Link
+                  ADAPTER NOT CONFIGURED
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Direct asynchronous communication with physical DVS event cameras and neuromorphic accelerators
+                Physical device transports are not configured in this deployment
               </p>
             </div>
           </div>
@@ -126,7 +126,7 @@ export function HardwareBridgeModal({
                   <span className="font-bold text-slate-100">
                     Enterprise Tier Feature:
                   </span>{" "}
-                  Live physical WebUSB streaming and Loihi 2 server testbeds are unlocked on the Enterprise Lab license. Currently running in verified hardware sandbox mode.
+                  Live physical WebUSB streaming and Loihi 2 server testbeds are unlocked on the Enterprise Lab license. No physical devices are connected. Live telemetry and test-burst execution are unavailable.
                 </div>
               </div>
               <button
@@ -164,6 +164,7 @@ export function HardwareBridgeModal({
               </button>
             </div>
 
+            {devices.length === 0 && <div className="rounded-xl border border-amber-700/40 bg-amber-950/20 p-4 text-xs text-amber-200">No real devices discovered. Connect a supported physical transport adapter before expecting device status, throughput, power or latency measurements.</div>}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {devices.map((dev) => {
                 const isOnline = dev.status === "connected";
@@ -226,7 +227,7 @@ export function HardwareBridgeModal({
                     {/* Actions */}
                     <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between gap-2">
                       <button
-                        onClick={() => handleToggleConnect(dev.id)}
+                        onClick={() => handleToggleConnect(dev.id)} disabled={true}
                         className={`px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5 transition-colors ${
                           isOnline
                             ? "bg-rose-950/60 hover:bg-rose-900 border border-rose-500/40 text-rose-300"
@@ -239,7 +240,7 @@ export function HardwareBridgeModal({
 
                       {isOnline && (
                         <button
-                          onClick={() => handleInjectSpikes(dev)}
+                          onClick={() => handleInjectSpikes(dev)} disabled={true}
                           className="px-2.5 py-1.5 rounded-lg bg-cyan-950 border border-cyan-500/40 hover:bg-cyan-900 text-cyan-300 text-xs flex items-center gap-1 font-mono"
                         >
                           <Send className="w-3 h-3" />
@@ -271,7 +272,7 @@ export function HardwareBridgeModal({
                 <span className="text-slate-500 font-mono">events</span>
               </div>
               <div className="text-slate-400 font-mono text-[11px]">
-                Protocol: Asynchronous AER Handshake Protocol (4-Phase REQ/ACK)
+                Protocol: not configured; no physical packet injection is enabled
               </div>
             </div>
           </div>
@@ -280,7 +281,7 @@ export function HardwareBridgeModal({
         {/* Footer */}
         <div className="bg-slate-950 px-6 py-4 border-t border-slate-900 flex items-center justify-between text-xs text-slate-400">
           <div>
-            WebUSB and WebSocket device daemons operational on localhost:9002
+            No WebUSB, WebSerial or board-specific device daemon is configured.
           </div>
           <button
             onClick={onClose}

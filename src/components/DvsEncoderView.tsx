@@ -31,7 +31,7 @@ export function DvsEncoderView() {
   const [syntheticPattern, setSyntheticPattern] = useState<
     "rotating_bar" | "bouncing_particles" | "sine_wave" | "cursor_track"
   >("rotating_bar");
-  const [uploadedVideoName, setUploadedVideoName] = useState<string>("drone_saccade_test.mp4");
+  const [uploadedVideoName, setUploadedVideoName] = useState<string>("synthetic-demo");
   const [copiedAer, setCopiedAer] = useState<boolean>(false);
   const [bafProcessing, setBafProcessing] = useState<boolean>(false);
   const [bafResult, setBafResult] = useState<{
@@ -42,7 +42,11 @@ export function DvsEncoderView() {
     meanEventRateMeps: number;
     processingTimeMs: number;
     message: string;
+    filteredCsv: string;
+    onPolarityRatio: number;
+    offPolarityRatio: number;
   } | null>(null);
+  const [bafError, setBafError] = useState<string | null>(null);
 
   // DVS parameters
   const [threshold, setThreshold] = useState<number>(25); // Temporal intensity contrast threshold
@@ -71,6 +75,7 @@ export function DvsEncoderView() {
   const onCountRef = useRef<number>(0);
   const offCountRef = useRef<number>(0);
   const lastMetricsTimeRef = useRef<number>(performance.now());
+  const recentEventsBufferRef = useRef<AerEvent[]>([]);
   const mousePosRef = useRef<{ x: number; y: number }>({ x: 128, y: 128 });
   const synthStateRef = useRef<{
     angle: number;
@@ -221,6 +226,7 @@ export function DvsEncoderView() {
       let onEvents = 0;
       let offEvents = 0;
       const sampleEvents: AerEvent[] = [];
+      const frameEvents: AerEvent[] = [];
       const nowMicros = Math.floor(performance.now() * 1000);
 
       // Downsample/step to keep 60fps silky smooth
@@ -242,6 +248,7 @@ export function DvsEncoderView() {
               if (sampleEvents.length < 5) {
                 sampleEvents.push({ t: nowMicros, x, y, p: 1 });
               }
+              if(frameEvents.length<1000)frameEvents.push({t:nowMicros,x,y,p:1});
             } else {
               // OFF Event: Red/Orange
               dvsCtx.fillStyle = "#ff0055";
@@ -250,6 +257,7 @@ export function DvsEncoderView() {
               if (sampleEvents.length < 5) {
                 sampleEvents.push({ t: nowMicros, x, y, p: -1 });
               }
+              if(frameEvents.length<1000)frameEvents.push({t:nowMicros,x,y,p:-1});
             }
             prev[pIdx] = lum; // Update reference memory on spike
           } else {
@@ -262,6 +270,11 @@ export function DvsEncoderView() {
       lastEventCountRef.current += currentFrameEvents;
       onCountRef.current += onEvents;
       offCountRef.current += offEvents;
+
+      if(frameEvents.length>0){
+        recentEventsBufferRef.current.push(...frameEvents);
+        if(recentEventsBufferRef.current.length>1000)recentEventsBufferRef.current=recentEventsBufferRef.current.slice(-1000);
+      }
 
       // Audio feedback if events fired
       if (currentFrameEvents > 15) {
@@ -282,8 +295,9 @@ export function DvsEncoderView() {
             off: Math.round((offCountRef.current / total) * 100),
           });
         }
-        if (sampleEvents.length > 0) {
-          setRecentEvents(sampleEvents);
+        if(recentEventsBufferRef.current.length>0){
+          setRecentEvents([...recentEventsBufferRef.current]);
+          recentEventsBufferRef.current=[];
         }
 
         lastEventCountRef.current = 0;
@@ -417,43 +431,34 @@ export function DvsEncoderView() {
   }, [activeEncoderScheme, analogFreq, analogAmp, encodeThreshold]);
 
   const exportAerFile = () => {
-    const aerHeader = `# DVS Address-Event Representation (AER) Stream v2.0\n# Format: timestamp_us x y polarity\n# Resolution: 256x256\n`;
-    const aerRows = recentEvents.map((e) => `${e.t} ${e.x} ${e.y} ${e.p > 0 ? 1 : 0}`).join("\n");
-    const blob = new Blob([aerHeader + aerRows], { type: "text/plain" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `dvs_event_stream_${Date.now()}.aedat`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setCopiedAer(true);
-    setTimeout(() => setCopiedAer(false), 2000);
+    const header="sample_id,label,split,timestamp_us,x,y,polarity";
+    const rows=recentEvents.map(e=>["live-preview","synthetic-or-video","test",e.t,e.x,e.y,e.p>0?1:-1].join(","));
+    const blob=new Blob([header+"\n"+rows.join("\n")],{type:"text/csv"});
+    const url=URL.createObjectURL(blob),a=document.createElement("a");
+    a.href=url;a.download="dvs-event-stream-"+Date.now()+".csv";a.click();URL.revokeObjectURL(url);
+    setCopiedAer(true);setTimeout(()=>setCopiedAer(false),2000);
   };
 
   const handleServerSideBaf = async () => {
-    setBafProcessing(true);
+    setBafProcessing(true);setBafError(null);
     try {
-      const aerHeader = `# DVS Address-Event Representation (AER)\n`;
-      const aerRows = recentEvents.map((e) => `${e.t} ${e.x} ${e.y} ${e.p > 0 ? 1 : 0}`).join("\n");
-      const res = await fetch("/api/dvs/process-aer", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          filename: uploadedVideoName || "dvs_recording.aedat",
-          filterMode: "baf",
-          timeWindowUs: 10000,
-          rawText: aerHeader + aerRows,
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setBafResult(data);
-      }
-    } catch (err) {
-      console.error("Failed BAF processing:", err);
-    } finally {
-      setBafProcessing(false);
-    }
+      if(recentEvents.length===0)throw new Error("No recent events to filter. Start the encoder and wait for event samples.");
+      const header="sample_id,label,split,timestamp_us,x,y,polarity";
+      const rows=recentEvents.map(e=>["live-preview","synthetic-or-video","test",e.t,e.x,e.y,e.p>0?1:-1].join(","));
+      const res=await fetch("/api/dvs/process-aer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+        filename:(uploadedVideoName||"synthetic-demo").replace(/[^a-zA-Z0-9_.-]/g,"_")+".csv",
+        filterMode:"baf",timeWindowUs:10000,sensorWidth:256,sensorHeight:256,rawText:header+"\n"+rows.join("\n")
+      })});
+      const data=await res.json();if(!res.ok)throw new Error(data.error||"Event filtering failed.");
+      setBafResult(data);setOnOffRatio({on:data.onPolarityRatio,off:data.offPolarityRatio});
+    }catch(err){setBafError(err instanceof Error?err.message:"Event filtering failed.");}
+    finally{setBafProcessing(false);}
+  };
+
+  const downloadFilteredCsv=()=>{
+    if(!bafResult?.filteredCsv)return;
+    const url=URL.createObjectURL(new Blob([bafResult.filteredCsv],{type:"text/csv"}));
+    const a=document.createElement("a");a.href=url;a.download="dvs-background-activity-filtered.csv";a.click();URL.revokeObjectURL(url);
   };
 
   const handleVideoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -815,7 +820,7 @@ export function DvsEncoderView() {
                     ) : (
                       <>
                         <Download className="w-2.5 h-2.5" />
-                        <span>Export AER (.aedat)</span>
+                        <span>Export event CSV</span>
                       </>
                     )}
                   </button>
@@ -838,13 +843,15 @@ export function DvsEncoderView() {
             </div>
           </div>
 
+          {bafError && <p role="alert" className="rounded border border-rose-700/40 bg-rose-950/20 p-2 text-xs text-rose-300">{bafError}</p>}
+
           {/* Server-Side BAF Results Card */}
           {bafResult && (
             <div className="p-3.5 rounded-xl bg-slate-950 border border-cyan-500/40 flex items-start justify-between gap-3 text-xs">
               <div className="space-y-1">
                 <div className="flex items-center gap-2">
                   <span className="px-2 py-0.5 rounded text-[10px] font-mono uppercase bg-cyan-950 text-cyan-400 border border-cyan-800">
-                    Spatio-Temporal Filter Active
+                    Background Activity Filter (BAF)
                   </span>
                   <span className="text-slate-200 font-bold">{bafResult.message}</span>
                 </div>
@@ -856,12 +863,12 @@ export function DvsEncoderView() {
                   <span>Latency: <strong className="text-teal-300">{bafResult.processingTimeMs} ms</strong></span>
                 </div>
               </div>
-              <button
+              <div className="flex flex-col gap-2"><button onClick={downloadFilteredCsv} className="rounded border border-cyan-700 px-2 py-1 text-[10px] text-cyan-300">Download filtered CSV</button><button
                 onClick={() => setBafResult(null)}
                 className="text-slate-500 hover:text-slate-300 text-xs px-2 py-1 rounded cursor-pointer"
               >
                 Dismiss
-              </button>
+              </button></div>
             </div>
           )}
 

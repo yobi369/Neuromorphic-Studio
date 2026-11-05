@@ -25,71 +25,71 @@ export function HardwareProfilerView() {
       id: "intel_loihi2",
       name: "Intel Loihi 2",
       vendor: "Intel Neuromorphic Computing Lab",
-      processNode: "Intel 4 (EUV)",
-      neuronsPerChip: "1,000,000",
-      synapsesPerChip: "120,000,000",
-      energyPerSop: "1.2 pJ / SOP",
-      typicalPower: "1.5 – 35 mW",
-      latencyUs: "150 μs",
-      targetDomain: "Robotics, Audio Keyword Spotting, High-Speed Vision",
-      architecture: "128 asynchronous neuromorphic cores with programmable microcode",
-      comparisonNote: "Over 100x lower latency and 1,000x lower energy than GPU on gesture recognition.",
+      processNode: "Not independently verified in this repository",
+      neuronsPerChip: "Not verified",
+      synapsesPerChip: "Not verified",
+      energyPerSop: "Not verified",
+      typicalPower: "Not verified",
+      latencyUs: "Not verified",
+      targetDomain: "Vendor-reported domain; not locally validated",
+      architecture: "Consult the versioned vendor datasheet; not validated by this application",
+      comparisonNote: "No independent cross-platform energy or latency comparison has been reproduced.",
     },
     {
       id: "brainchip_akida",
       name: "BrainChip Akida AKD1000",
       vendor: "BrainChip Inc.",
-      processNode: "28nm CMOS",
-      neuronsPerChip: "1,200,000",
-      synapsesPerChip: "10,000,000",
-      energyPerSop: "3.5 pJ / SOP",
-      typicalPower: "10 – 50 mW",
-      latencyUs: "350 μs",
-      targetDomain: "Automotive Edge, Smart Home, Industrial IoT",
-      architecture: "Event-based Neural Processor with native on-chip edge learning",
-      comparisonNote: "Zero DRAM required; complete in-SRAM operation eliminates memory bus bottlenecks.",
+      processNode: "Not independently verified in this repository",
+      neuronsPerChip: "Not verified",
+      synapsesPerChip: "Not verified",
+      energyPerSop: "Not verified",
+      typicalPower: "Not verified",
+      latencyUs: "Not verified",
+      targetDomain: "Vendor-reported domain; not locally validated",
+      architecture: "Consult the versioned vendor datasheet; not validated by this application",
+      comparisonNote: "No independent cross-platform energy or latency comparison has been reproduced.",
     },
     {
       id: "spinnaker2",
       name: "SpiNNaker 2",
       vendor: "TU Dresden & University of Manchester",
-      processNode: "22nm FD-SOI",
-      neuronsPerChip: "152 ARM Cores + Neuromorphic Accels",
-      synapsesPerChip: "Scalable Multi-Chip Torus",
-      energyPerSop: "10 pJ / SOP",
-      typicalPower: "100 – 900 mW",
-      latencyUs: "200 μs",
-      targetDomain: "Large-Scale Cortical Brain Simulation, Tactile Robotics",
-      architecture: "Massively parallel asynchronous packet-switched communication fabric",
-      comparisonNote: "Simulates human cortical columns in true biological real-time.",
+      processNode: "Not independently verified in this repository",
+      neuronsPerChip: "Not verified",
+      synapsesPerChip: "Not verified",
+      energyPerSop: "Not verified",
+      typicalPower: "Not verified",
+      latencyUs: "Not verified",
+      targetDomain: "Vendor-reported domain; not locally validated",
+      architecture: "Consult the versioned vendor datasheet; not validated by this application",
+      comparisonNote: "No independent cross-platform energy or latency comparison has been reproduced.",
     },
     {
       id: "synsense_speck",
       name: "SynSense Speck",
       vendor: "SynSense Neuromorphic Technologies",
-      processNode: "55nm DVS + Logic 3D Stack",
-      neuronsPerChip: "320,000",
-      synapsesPerChip: "4,000,000",
-      energyPerSop: "2.1 pJ / SOP",
-      typicalPower: "< 5 mW (Sub-milliwatt)",
-      latencyUs: "100 μs",
-      targetDomain: "Ultra-Low-Power Wearables, Battery Presence Detection",
-      architecture: "Integrated 128x128 DVS event camera stacked on SNN processing core",
-      comparisonNote: "World's lowest-power vision SoC: operates continuously on a coin cell battery for months.",
+      processNode: "Not independently verified in this repository",
+      neuronsPerChip: "Not verified",
+      synapsesPerChip: "Not verified",
+      energyPerSop: "Not verified",
+      typicalPower: "Not verified",
+      latencyUs: "Not verified",
+      targetDomain: "Vendor-reported domain; not locally validated",
+      architecture: "Consult the versioned vendor datasheet; not validated by this application",
+      comparisonNote: "No independent cross-platform energy or latency comparison has been reproduced.",
     },
     {
       id: "nvidia_jetson",
       name: "NVIDIA Jetson Orin Nano (Baseline GPU)",
       vendor: "NVIDIA",
-      processNode: "8nm Ampere",
-      neuronsPerChip: "Dense Weights Matrix",
-      synapsesPerChip: "Dense Tensor Cores",
-      energyPerSop: "N/A (~250 nJ / MAC)",
-      typicalPower: "7,000 – 15,000 mW (15W)",
-      latencyUs: "16,000 μs (16ms)",
-      targetDomain: "Standard Edge Deep Learning (CNN/Transformer)",
-      architecture: "Synchronous SIMD/Tensor Core GPU with LPDDR5 Memory",
-      comparisonNote: "High compute throughput for dense batches, but continuous power draw even on idle static scenes.",
+      processNode: "Not independently verified in this repository",
+      neuronsPerChip: "Not verified",
+      synapsesPerChip: "Not verified",
+      energyPerSop: "Not verified",
+      typicalPower: "Not verified",
+      latencyUs: "Not verified",
+      targetDomain: "Vendor-reported domain; not locally validated",
+      architecture: "Consult the versioned vendor datasheet; not validated by this application",
+      comparisonNote: "No independent cross-platform energy or latency comparison has been reproduced.",
     },
   ];
 
@@ -98,7 +98,11 @@ export function HardwareProfilerView() {
   // Workload Calculator Inputs
   const [eventRateKeps, setEventRateKeps] = useState<number>(50); // 50 kEPS from DVS
   const [synapticFanOut, setSynapticFanOut] = useState<number>(64); // connections per spike
-  const [activeDutyCycle, setActiveDutyCycle] = useState<number>(15); // % of time scene has motion
+  const [activeDutyCycle, setActiveDutyCycle] = useState<number>(15); // illustrative workload assumption
+  const [energyPerSopInput, setEnergyPerSopInput] = useState<number>(0);
+  const [idlePowerInputMw, setIdlePowerInputMw] = useState<number>(0);
+  const [gpuBaselineInputMw, setGpuBaselineInputMw] = useState<number>(0);
+  const [batteryCapacityInputMwh, setBatteryCapacityInputMwh] = useState<number>(0);
 
   const selectedChip = hardwareDatabase.find((c) => c.id === selectedChipId) || hardwareDatabase[0];
 
@@ -107,27 +111,16 @@ export function HardwareProfilerView() {
   const sopsPerSec = eventRateKeps * 1000 * synapticFanOut; // e.g. 50,000 * 64 = 3,200,000 SOPs/sec
 
   // Energy per SOP (in picojoules)
-  let pJperSop = 1.2;
-  if (selectedChip.id === "brainchip_akida") pJperSop = 3.5;
-  if (selectedChip.id === "spinnaker2") pJperSop = 10.0;
-  if (selectedChip.id === "synsense_speck") pJperSop = 2.1;
-  if (selectedChip.id === "nvidia_jetson") pJperSop = 250000; // ~250 nanojoules per FLOP
-
-  // Dynamic Power (Watts) = SOPs/sec * (pJ / 10^12) * (DutyCycle / 100)
-  const dynamicPowerWatts = (sopsPerSec * (pJperSop * 1e-12) * (activeDutyCycle / 100));
-  const staticPowerWatts = selectedChip.id === "nvidia_jetson" ? 4.5 : 0.002; // 4.5W vs 2mW
+  // User-supplied scenario assumptions only; no chip-specific values are hard-coded.
+  const pJperSop = energyPerSopInput;
+  const dynamicPowerWatts = sopsPerSec * (pJperSop * 1e-12) * (activeDutyCycle / 100);
+  const staticPowerWatts = idlePowerInputMw / 1000;
   const totalPowerMilliwatts = (dynamicPowerWatts + staticPowerWatts) * 1000;
-
-  // Conventional GPU power (Jetson running 30fps CNN)
-  const gpuBaselineMilliwatts = 8500; // 8.5W
-
-  // Energy Savings Ratio
-  const powerReductionPct = Math.max(0, ((gpuBaselineMilliwatts - totalPowerMilliwatts) / gpuBaselineMilliwatts) * 100);
-
-  // Battery life calculation on standard 2500mAh @ 3.7V battery (9.25 Watt-hours = 9250 mWh)
-  const batteryCapacityMwh = 9250;
-  const neuromorphicBatteryHours = (batteryCapacityMwh / Math.max(0.5, totalPowerMilliwatts));
-  const gpuBatteryHours = (batteryCapacityMwh / gpuBaselineMilliwatts);
+  const gpuBaselineMilliwatts = gpuBaselineInputMw;
+  const powerReductionPct = gpuBaselineMilliwatts > 0 ? ((gpuBaselineMilliwatts - totalPowerMilliwatts) / gpuBaselineMilliwatts) * 100 : null;
+  const batteryCapacityMwh = batteryCapacityInputMwh;
+  const neuromorphicBatteryHours = totalPowerMilliwatts > 0 ? batteryCapacityMwh / totalPowerMilliwatts : 0;
+  const gpuBatteryHours = gpuBaselineMilliwatts > 0 ? batteryCapacityMwh / gpuBaselineMilliwatts : 0;
 
   return (
     <div className="space-y-8 pb-16">
@@ -143,14 +136,14 @@ export function HardwareProfilerView() {
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-slate-400 mt-1">
-            Synaptic Operations (SOPs) vs Floating Point Operations (FLOPs) comparative silicon benchmark.
+            Hardware reference fields are unverified; scenario calculations require explicit user assumptions.
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           <span className="text-xs font-mono text-emerald-400 px-3 py-1 rounded-full bg-emerald-950/80 border border-emerald-500/40 flex items-center gap-1.5">
             <CheckCircle2 className="w-3.5 h-3.5" />
-            <span>Up to 99.8% Power Reduction</span>
+            <span>Hardware specifications unverified</span>
           </span>
         </div>
       </div>
@@ -296,7 +289,7 @@ export function HardwareProfilerView() {
               Dynamic Energy & Battery Life Calculator (Edge SWaP-C)
             </h3>
             <p className="text-xs text-slate-400">
-              Calculate exact power consumption, synaptic operations per second, and battery longevity.
+              Calculate scenario estimates only. These are not measured chip power, latency or battery-life results.
             </p>
           </div>
         </div>
@@ -355,6 +348,14 @@ export function HardwareProfilerView() {
           </div>
         </div>
 
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 rounded-xl border border-amber-700/30 bg-amber-950/10 p-4">
+          <label className="text-xs text-slate-300">Assumed energy per SOP (pJ)<input type="number" min="0" step="any" value={energyPerSopInput} onChange={(e)=>setEnergyPerSopInput(Number(e.target.value))} className="mt-1 w-full rounded bg-slate-950 border border-slate-700 p-2"/></label>
+          <label className="text-xs text-slate-300">Assumed idle power (mW)<input type="number" min="0" step="any" value={idlePowerInputMw} onChange={(e)=>setIdlePowerInputMw(Number(e.target.value))} className="mt-1 w-full rounded bg-slate-950 border border-slate-700 p-2"/></label>
+          <label className="text-xs text-slate-300">Comparison baseline (mW)<input type="number" min="0" step="any" value={gpuBaselineInputMw} onChange={(e)=>setGpuBaselineInputMw(Number(e.target.value))} className="mt-1 w-full rounded bg-slate-950 border border-slate-700 p-2"/></label>
+          <label className="text-xs text-slate-300">Battery capacity (mWh)<input type="number" min="0" step="any" value={batteryCapacityInputMwh} onChange={(e)=>setBatteryCapacityInputMwh(Number(e.target.value))} className="mt-1 w-full rounded bg-slate-950 border border-slate-700 p-2"/></label>
+          <p className="sm:col-span-2 lg:col-span-4 text-[10px] text-amber-300">These four values must come from your own measurement, vendor datasheet or explicitly stated scenario. The app does not supply hidden chip defaults.</p>
+        </div>
+
         {/* Results Matrix */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 pt-2 border-t border-slate-800">
           <div className="p-4 rounded-xl border border-slate-800 bg-slate-950 space-y-1">
@@ -367,36 +368,32 @@ export function HardwareProfilerView() {
           </div>
 
           <div className="p-4 rounded-xl border border-emerald-500/40 bg-slate-950 space-y-1">
-            <span className="text-[10px] font-mono text-slate-500 uppercase">Total Silicon Power</span>
+            <span className="text-[10px] font-mono text-slate-500 uppercase">Scenario total power</span>
             <div className="text-xl font-extrabold text-emerald-400 font-mono">
-              {totalPowerMilliwatts < 1000
-                ? `${totalPowerMilliwatts.toFixed(1)} mW`
-                : `${(totalPowerMilliwatts / 1000).toFixed(2)} W`}
+              {energyPerSopInput > 0 || idlePowerInputMw > 0 ? (totalPowerMilliwatts < 1000 ? `${totalPowerMilliwatts.toFixed(3)} mW` : `${(totalPowerMilliwatts / 1000).toFixed(3)} W`) : "Enter assumptions"}
             </div>
             <p className="text-[10px] text-emerald-400/80">
-              vs {gpuBaselineMilliwatts / 1000}W on conventional GPU
+              {gpuBaselineMilliwatts > 0 ? `Baseline: ${gpuBaselineMilliwatts.toFixed(2)} mW` : "No comparison baseline supplied"}
             </p>
           </div>
 
           <div className="p-4 rounded-xl border border-slate-800 bg-slate-950 space-y-1">
             <span className="text-[10px] font-mono text-slate-500 uppercase">Energy Efficiency Gain</span>
             <div className="text-xl font-extrabold text-teal-300 font-mono">
-              {powerReductionPct.toFixed(1)}%
+              {powerReductionPct === null ? "Not calculated" : `${powerReductionPct.toFixed(1)}%`}
             </div>
-            <p className="text-[10px] text-slate-500">Direct battery savings</p>
+            <p className="text-[10px] text-slate-500">Scenario comparison</p>
           </div>
 
           <div className="p-4 rounded-xl border border-slate-800 bg-slate-950 space-y-1">
             <span className="text-[10px] font-mono text-slate-500 uppercase">
-              Battery Life (2500mAh)
+              Battery life (user-supplied battery)
             </span>
             <div className="text-xl font-extrabold text-amber-400 font-mono">
-              {neuromorphicBatteryHours > 24
-                ? `${(neuromorphicBatteryHours / 24).toFixed(0)} days`
-                : `${neuromorphicBatteryHours.toFixed(1)} hours`}
+              {batteryCapacityMwh > 0 && totalPowerMilliwatts > 0 ? (neuromorphicBatteryHours > 24 ? `${(neuromorphicBatteryHours / 24).toFixed(1)} days` : `${neuromorphicBatteryHours.toFixed(1)} hours`) : "Enter battery + power"}
             </div>
             <p className="text-[10px] text-slate-500">
-              GPU runs out in {gpuBatteryHours.toFixed(1)} hours
+              {gpuBaselineMilliwatts > 0 && batteryCapacityMwh > 0 ? `Baseline: ${gpuBatteryHours.toFixed(1)} hours` : "Baseline not supplied"}
             </p>
           </div>
         </div>
