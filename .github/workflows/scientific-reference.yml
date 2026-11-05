@@ -23,6 +23,7 @@ jobs:
       - run: python validation/brian2_reference.py
       - run: python validation/brian2_convergence_reference.py
       - run: python validation/brian2_stdp_reference.py
+      - run: python validation/brian2_triplet_stdp_reference.py
       - run: npm install --no-audit --no-fund
       - run: npm test
       - run: npm run typecheck
