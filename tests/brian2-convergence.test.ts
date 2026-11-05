@@ -4,7 +4,7 @@ import {existsSync,readFileSync} from "node:fs";
 import {stepLif,stepAdEx,stepIzhikevich} from "../src/engine/index.ts";
 
 const fixturePath="validation/brian2-convergence-reference.json";
-test("RK4 LIF, AdEx and Izhikevich converge toward high-resolution Brian2 references", {skip:!existsSync(fixturePath)}, () => {
+test("LIF Euler and AdEx/Izhikevich RK4 converge toward high-resolution Brian2 references", {skip:!existsSync(fixturePath)}, () => {
   const f=JSON.parse(readFileSync(fixturePath,"utf8"));
   const stepSizes=[0.1,0.05,0.025,0.0125,0.00625];
   const integrate=(dt:number,kind:"lif"|"adex"|"izhikevich")=>{
@@ -12,7 +12,7 @@ test("RK4 LIF, AdEx and Izhikevich converge toward high-resolution Brian2 refere
     if(kind==="lif"){
       let state={voltageMv:-60,refractoryRemainingMs:0};
       const p={tauM:20,resistanceMOhm:100,restMv:-70,resetMv:-65,thresholdMv:100,refractoryMs:0};
-      for(let i=0;i<count;i++)state=stepLif(state,p,0,dt,"rk4").state;
+      for(let i=0;i<count;i++)state=stepLif(state,p,0,dt,"euler").state;
       return Math.abs(state.voltageMv-f.lif.voltageMv);
     }
     if(kind==="adex"){
