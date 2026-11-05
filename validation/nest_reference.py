@@ -17,9 +17,11 @@ nest.Simulate(2.0)
 events = meter.get("events")
 if len(events["V_m"]) == 0:
     raise RuntimeError("NEST did not record membrane voltage")
+recorded_time_ms = float(events["times"][-1])
 fixture = {
     "source": "NEST Simulator 3.10.0; iaf_psc_alpha; resolution=0.1 ms",
-    "lif": {"dtMs": 0.1, "steps": 20, "state": {"voltageMv": float(events["V_m"][-1])}},
+    "lif": {"dtMs": 0.1, "steps": round(recorded_time_ms / 0.1), "recordedTimeMs": recorded_time_ms,
+           "state": {"voltageMv": float(events["V_m"][-1])}},
 }
 Path("validation").mkdir(exist_ok=True)
 Path("validation/nest-reference.json").write_text(json.dumps(fixture, indent=2) + "\n")
