@@ -76,7 +76,7 @@ export class EventDrivenNetwork{
 }
 export interface SpikeTrainStats{count:number;rateHz:number;meanIsiMs:number|null;cvIsi:number|null;}
 export function analyzeSpikeTrain(times:number[],duration:number):SpikeTrainStats{
- positive(duration,"durationMs");for(let i=0;i<times.length;i++){finite(times[i],"spike time");if(i&&times[i]<times[i-1])throw new Error("spike times must be sorted");}
+ positive(duration,"durationMs");for(let i=0;i<times.length;i++){finite(times[i],"spike time");if(times[i]<0||times[i]>duration)throw new Error("spike time outside duration");if(i&&times[i]<times[i-1])throw new Error("spike times must be sorted");}
  const isi=times.slice(1).map((t,i)=>t-times[i]),mean=isi.length?isi.reduce((a,b)=>a+b,0)/isi.length:null;
  const variance=mean===null?null:isi.reduce((a,b)=>a+(b-mean)**2,0)/isi.length;
  return {count:times.length,rateHz:times.length/(duration/1000),meanIsiMs:mean,cvIsi:mean===null||mean===0?null:Math.sqrt(variance!)/mean};
