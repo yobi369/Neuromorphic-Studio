@@ -19,5 +19,4 @@ jobs:
       - run: python -m pip install --disable-pip-version-check tonic==1.6.0
       - run: python -c "import tonic; assert hasattr(tonic.datasets, 'NMNIST'); assert hasattr(tonic.datasets, 'DVSGesture'); assert hasattr(tonic.datasets, 'SHD'); print('Tonic dataset adapters import successfully:', tonic.__version__)"
       - run: python -m py_compile validation/official_datasets.py validation/verify_manifest.py validation/test_manifest_verifier.py
-      - run: python -m unittest discover -s validation -p "test_manifest_verifier.py" validation/verify_manifest.py validation/test_manifest_verifier.py
       - run: python -m unittest discover -s validation -p "test_manifest_verifier.py"
