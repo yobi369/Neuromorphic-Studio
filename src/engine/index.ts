@@ -9,7 +9,7 @@ export interface IzhikevichParameters { a:number; b:number; c:number; d:number; 
 export interface IzhikevichState { voltageMv:number; recovery:number; }
 const finite=(v:number,n:string)=>{if(!Number.isFinite(v))throw new Error(n+" must be finite");};
 const positive=(v:number,n:string)=>{finite(v,n);if(v<=0)throw new Error(n+" must be > 0");};
-function validateParameters(p:Record<string,number>){for(const [name,value] of Object.entries(p))finite(value,name);}
+function validateParameters(p:object){for(const [name,value] of Object.entries(p)){if(typeof value!=="number")throw new Error(name+" must be numeric");finite(value,name);}}
 const validIntegrator=(m:Integrator)=>{if(m!=="euler"&&m!=="rk4")throw new Error("integrator must be euler or rk4");};
 function validateStep(dt:number,current:number){positive(dt,"dtMs");finite(current,"currentPa");}
 function scalar(y:number,dt:number,f:(v:number)=>number,m:Integrator):number {
