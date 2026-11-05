@@ -15,9 +15,9 @@ The repository now has automated deterministic neuron regression tests, selected
 ### Synaptic plasticity
 - Pair exponential STDP with pre/post traces, chronological ordering and weight bounds.
 - Triplet trace rule with slow traces and A3 terms.
-- Hand-computed pair and triplet timing-window regression tests.
+- Hand-computed pair and triplet timing-window regression tests; pair STDP also has an independent Brian2 2.9.0 event-driven timing-window fixture.
 - Heterogeneous network applies plasticity at delayed pre-arrival and post-spike times.
-- Still needed: independent Brian2/NEST STDP curve fixtures, simultaneous-event conventions, nonzero-delay protocol studies and fitted parameter sensitivity.
+- Still needed: independent triplet-rule reference curves, simultaneous-event conventions, nonzero-delay protocol studies and fitted parameter sensitivity.
 
 ### Network simulation
 - LIF fixed-step network and heterogeneous LIF/AdEx/Izhikevich engine.
