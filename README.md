@@ -11,7 +11,7 @@ Neuromorphic Studio is an early-stage research workbench for spiking neural netw
 - Fixed-step LIF network and heterogeneous LIF/AdEx/Izhikevich populations, deterministic topology builders, delayed synaptic events and spike-raster summaries.
 - Strict event CSV parser and Tonic adapters for N-MNIST, IBM DVS Gesture and SHD.
 - Confusion matrix, accuracy, macro-F1, class-stratified bootstrap intervals and paired exact McNemar comparisons.
-- Brian2 reference fixture generation and automated comparisons for all three neuron equations.
+- Brian2 reference fixture generation and automated comparisons for all three neuron equations, a timestep-halving convergence sweep and independent pair/triplet STDP timing references.
 - Lava simulation scaffold, snnTorch/PyTorch module scaffold and portable fixed-point C99 kernel. These are software exports, not certified board firmware.
 
 See [Scientific engine](docs/SCIENTIFIC_ENGINE.md), [Reproducible experiments](docs/REPRODUCIBLE_EXPERIMENTS.md) and [Scientific validation](docs/SCIENTIFIC_VALIDATION.md).
