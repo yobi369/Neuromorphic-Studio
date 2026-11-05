@@ -18,20 +18,20 @@ def run_pair(pre_time_ms, post_time_ms):
         pre, post,
         model="""
         w : 1
-        dx_pre/dt = -x_pre/tau_plus : 1 (event-driven)
-        dy_post/dt = -y_post/tau_minus : 1 (event-driven)
+        dApre/dt = -Apre/tau_plus : 1 (event-driven)
+        dApost/dt = -Apost/tau_minus : 1 (event-driven)
         tau_plus : second (shared)
         tau_minus : second (shared)
         A_plus : 1 (shared)
         A_minus : 1 (shared)
         """,
         on_pre="""
-        w = clip(w - A_minus*y_post, 0, 1)
-        x_pre += 1
+        w = clip(w - A_minus*Apost, 0, 1)
+        Apre += 1
         """,
         on_post="""
-        w = clip(w + A_plus*x_pre, 0, 1)
-        y_post += 1
+        w = clip(w + A_plus*Apre, 0, 1)
+        Apost += 1
         """,
     )
     syn.connect()
